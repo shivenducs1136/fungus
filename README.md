@@ -105,3 +105,21 @@ Code explains what exists.
 Deep Knowledge explains why it exists.
 
 The goal is to preserve implementation rationale so future developers and future AI agents can make informed decisions without repeating past investigations.
+
+## Running with Docker
+
+You can easily run the Fungus Knowledge Server and its required database using Docker Compose.
+
+1. **Start the stack**:
+   ```bash
+   docker compose up --build -d
+   ```
+   This will build the API image and start both the API and a PostgreSQL database in the background.
+
+2. **Access the API**:
+   The API will be available at `http://localhost:8000`. You can view the interactive Swagger documentation at `http://localhost:8000/docs`.
+
+3. **Stop the stack**:
+   ```bash
+   docker compose down
+   ```
