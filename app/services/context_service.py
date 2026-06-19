@@ -29,20 +29,6 @@ class ContextService:
         normalized = [cls.normalize_ticket_id(ticket_id) for ticket_id in ticket_ids]
         return sorted(set(normalized))
 
-    @classmethod
-    def jira_id_variants(cls, jira_id: str) -> set[str]:
-        """Return legacy and normalized Jira ID variants for backward-compatible lookup."""
-        raw = jira_id.strip()
-        variants = {raw}
-        if raw.startswith("[") and raw.endswith("]"):
-            inner = raw[1:-1].strip()
-            if inner:
-                variants.add(inner)
-                variants.add(f"[{inner}]")
-        else:
-            variants.add(f"[{raw}]")
-        return variants
-
     @staticmethod
     def generate_key(ticket_ids: list[str]) -> str:
         """Generate a normalized key from sorted, deduplicated ticket IDs."""
@@ -145,22 +131,15 @@ class ContextService:
     def get_by_jira(cls, jira_id: str) -> list[dict]:
         """Get all entries containing the given JIRA ID."""
         jira_index = cls._get_jira_index()
-        candidate_ids = cls.jira_id_variants(jira_id)
-        matching_ids = [candidate_id for candidate_id in candidate_ids if candidate_id in jira_index]
-        if not matching_ids:
+        normalized_jira_id = cls.normalize_ticket_id(jira_id)
+        if normalized_jira_id not in jira_index:
             raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
 
         store = cls._get_store()
         results = []
-        visited_entry_ids = set()
-        for matching_id in matching_ids:
-            for key in jira_index[matching_id]:
-                if key in store:
-                    for entry in store[key]:
-                        entry_id = entry.get("entry_id")
-                        if entry_id not in visited_entry_ids:
-                            results.append(entry)
-                            visited_entry_ids.add(entry_id)
+        for key in jira_index[normalized_jira_id]:
+            if key in store:
+                results.extend(store[key])
         return results
 
     @classmethod
@@ -215,12 +194,13 @@ class ContextService:
             jira_index = cls._get_jira_index()
             for ticket_id in deleted_entry["ticket_ids"]:
                 if ticket_id in jira_index:
-                    # Remove stale key references for this ticket after bucket deletion.
-                    jira_index[ticket_id] = [
-                        k for k in jira_index[ticket_id] if k != key
-                    ]
-                    if not jira_index[ticket_id]:
+                    # Remove stale key reference for this ticket after bucket deletion.
+                    updated_keys = set(jira_index[ticket_id])
+                    updated_keys.discard(key)
+                    if not updated_keys:
                         del jira_index[ticket_id]
+                    else:
+                        jira_index[ticket_id] = sorted(updated_keys)
             cls._save_jira_index(jira_index)
 
         cls._save_store(store)
