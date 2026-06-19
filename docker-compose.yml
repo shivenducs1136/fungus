@@ -1,13 +1,33 @@
-version: '3.8'
-
 services:
-  api:
-    build: .
-    container_name: fungus_api
+  api-release:
+    profiles: ["release"]
+    build:
+      context: .
+      target: release
+    container_name: fungus_api_release
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/fungus
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - fungus_network
+    restart: unless-stopped
+
+  api-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      target: dev
+    container_name: fungus_api_dev
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/fungus
+    volumes:
+      - .:/app
     depends_on:
       db:
         condition: service_healthy
