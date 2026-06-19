@@ -135,3 +135,6 @@ Use Docker Compose profiles to run either a production-like runtime image (`rele
    - Swagger: `http://localhost:8000/docs`
 
 Note: Start only one API profile at a time (`release` or `dev`) because both map to port `8000`.
+
+## TODO
+- Migrate database interactions from synchronous `psycopg2-binary` + SQLAlchemy to asynchronous using `asyncpg` to follow FastAPI best practices for async I/O.
