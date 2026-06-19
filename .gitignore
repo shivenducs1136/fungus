@@ -26,8 +26,8 @@ env/
 .env
 
 # Knowledge store (runtime data — do not commit)
-knowledge-server/tally_ai_store.json
-tally_ai_store.json
+jira_index.json
+knowledge_store.json
 
 # IDE / OS
 .vscode/settings.json
