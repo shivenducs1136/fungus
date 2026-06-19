@@ -1,19 +1,14 @@
 """Service for CRUD operations on context entries indexed by JIRA IDs."""
 
-import json
 import uuid
-
-from pathlib import Path
 from datetime import datetime, timezone
-
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from app.models.domain_models import ContextEntry, ContextJiraIndex
 from app.core.exceptions import ContextNotFoundException, StorageException
-
 
 class ContextService:
     """Service for CRUD operations on context entries indexed by JIRA IDs."""
-
-    STORE_FILE = Path(__file__).parent.parent / "storage" / "knowledge_store.json"
-    JIRA_INDEX_FILE = Path(__file__).parent.parent / "storage" / "jira_index.json"
 
     @staticmethod
     def normalize_ticket_id(ticket_id: str) -> str:
@@ -35,172 +30,179 @@ class ContextService:
         return "".join(sorted(set(ticket_ids)))
 
     @classmethod
-    def _read_json(cls, file_path: Path) -> dict:
-        """Read and parse a JSON file, returning empty dict if not found."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except FileNotFoundError:
-            return {}
-        except Exception as ex:
-            raise StorageException(f"Failed reading {file_path.name}: {ex}")
-
-    @classmethod
-    def _write_json(cls, file_path: Path, data: dict) -> None:
-        """Write data as JSON to a file."""
-        try:
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-        except Exception as ex:
-            raise StorageException(f"Failed writing {file_path.name}: {ex}")
-
-    @classmethod
-    def _get_store(cls) -> dict:
-        return cls._read_json(cls.STORE_FILE)
-
-    @classmethod
-    def _save_store(cls, store: dict) -> None:
-        cls._write_json(cls.STORE_FILE, store)
-
-    @classmethod
-    def _get_jira_index(cls) -> dict:
-        return cls._read_json(cls.JIRA_INDEX_FILE)
-
-    @classmethod
-    def _save_jira_index(cls, index: dict) -> None:
-        cls._write_json(cls.JIRA_INDEX_FILE, index)
-
-    @classmethod
-    def create(cls, ticket_ids: list[str], content: str, metadata: dict | None) -> dict:
-        """Create a new context entry."""
-        normalized_ticket_ids = cls.normalize_ticket_ids(ticket_ids)
-        store = cls._get_store()
-        key = cls.generate_key(normalized_ticket_ids)
-        entry_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-
-        entry = {
-            "entry_id": entry_id,
-            "ticket_ids": normalized_ticket_ids,
-            "content": content,
-            "metadata": metadata or {},
-            "created_at": now,
+    def _to_dict(cls, entry: ContextEntry) -> dict:
+        return {
+            "entry_id": entry.id,
+            "ticket_ids": entry.ticket_ids,
+            "content": entry.content,
+            "metadata": entry.metadata_json,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
         }
 
-        store.setdefault(key, []).append(entry)
-        cls._save_store(store)
-
-        # Update JIRA index
-        jira_index = cls._get_jira_index()
-        for ticket_id in normalized_ticket_ids:
-            jira_index.setdefault(ticket_id, []).append(key)
-            # Keep one key reference per ticket to avoid duplicate reads later.
-            jira_index[ticket_id] = list(
-                set(jira_index[ticket_id])
-            )  # Remove duplicates
-        cls._save_jira_index(jira_index)
-
-        return {"key": key, "entry_id": entry_id}
+    @classmethod
+    def create(cls, db: Session, ticket_ids: list[str], content: str, metadata: dict | None) -> dict:
+        """Create a new context entry."""
+        normalized_ticket_ids = cls.normalize_ticket_ids(ticket_ids)
+        key = cls.generate_key(normalized_ticket_ids)
+        entry_id = str(uuid.uuid4())
+        
+        try:
+            entry = ContextEntry(
+                id=entry_id,
+                group_key=key,
+                ticket_ids=normalized_ticket_ids,
+                content=content,
+                metadata_json=metadata or {}
+            )
+            db.add(entry)
+            
+            # Update JIRA index
+            for ticket_id in normalized_ticket_ids:
+                # Check if this index already exists
+                existing_idx = db.query(ContextJiraIndex).filter(
+                    ContextJiraIndex.jira_id == ticket_id,
+                    ContextJiraIndex.group_key == key
+                ).first()
+                if not existing_idx:
+                    idx = ContextJiraIndex(jira_id=ticket_id, group_key=key)
+                    db.add(idx)
+                    try:
+                        db.flush()
+                    except IntegrityError:
+                        db.rollback()
+                        # Duplicate key from race condition, ignore and continue
+                        pass
+                    
+            db.commit()
+            return {"key": key, "entry_id": entry_id}
+        except SQLAlchemyError as ex:
+            db.rollback()
+            raise StorageException(f"Database error during create: {str(ex)}")
 
     @classmethod
-    def list_keys(cls) -> list[str]:
+    def list_keys(cls, db: Session) -> list[str]:
         """List all stored keys."""
-        return list(cls._get_store().keys())
+        try:
+            rows = db.query(ContextEntry.group_key).distinct().all()
+            return [r[0] for r in rows]
+        except SQLAlchemyError as ex:
+            raise StorageException(f"Database error during list_keys: {str(ex)}")
 
     @classmethod
-    def get_all(cls, key: str) -> list[dict]:
+    def get_all(cls, db: Session, key: str) -> list[dict]:
         """Get all entries for a key."""
-        store = cls._get_store()
-        if key not in store:
-            raise ContextNotFoundException(f"Key '{key}' not found")
-        return store[key]
+        try:
+            entries = db.query(ContextEntry).filter(ContextEntry.group_key == key).all()
+            if not entries:
+                raise ContextNotFoundException(f"Key '{key}' not found")
+            return [cls._to_dict(e) for e in entries]
+        except SQLAlchemyError as ex:
+            raise StorageException(f"Database error during get_all: {str(ex)}")
 
     @classmethod
-    def get_entry(cls, key: str, entry_id: str) -> dict:
+    def get_entry(cls, db: Session, key: str, entry_id: str) -> dict:
         """Get a single entry by key and entry_id."""
-        store = cls._get_store()
-        if key not in store:
-            raise ContextNotFoundException(f"Key '{key}' not found")
-        for entry in store[key]:
-            if entry["entry_id"] == entry_id:
-                return entry
-        raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
+        try:
+            entry = db.query(ContextEntry).filter(
+                ContextEntry.group_key == key,
+                ContextEntry.id == entry_id
+            ).first()
+            if not entry:
+                raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
+            return cls._to_dict(entry)
+        except SQLAlchemyError as ex:
+            raise StorageException(f"Database error during get_entry: {str(ex)}")
 
     @classmethod
-    def get_by_jira(cls, jira_id: str) -> list[dict]:
+    def get_by_jira(cls, db: Session, jira_id: str) -> list[dict]:
         """Get all entries containing the given JIRA ID."""
-        jira_index = cls._get_jira_index()
-        normalized_jira_id = cls.normalize_ticket_id(jira_id)
-        if normalized_jira_id not in jira_index:
-            raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
-
-        store = cls._get_store()
-        results = []
-        for key in jira_index[normalized_jira_id]:
-            if key in store:
-                results.extend(store[key])
-        return results
+        try:
+            normalized_jira_id = cls.normalize_ticket_id(jira_id)
+            
+            # Find all keys for this jira_id
+            keys = db.query(ContextJiraIndex.group_key).filter(
+                ContextJiraIndex.jira_id == normalized_jira_id
+            ).all()
+            
+            if not keys:
+                raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
+                
+            key_list = [k[0] for k in keys]
+            entries = db.query(ContextEntry).filter(ContextEntry.group_key.in_(key_list)).all()
+            
+            return [cls._to_dict(e) for e in entries]
+        except SQLAlchemyError as ex:
+            raise StorageException(f"Database error during get_by_jira: {str(ex)}")
 
     @classmethod
-    def get_recent_by_jira(cls, jira_id: str, depth: int) -> list[dict]:
+    def get_recent_by_jira(cls, db: Session, jira_id: str, depth: int) -> list[dict]:
         """Get the most recent N entries containing the given JIRA ID."""
-        entries = cls.get_by_jira(jira_id)
-        # created_at is stored as ISO 8601, so lexicographic sort is chronological.
-        sorted_entries = sorted(
-            entries,
-            key=lambda entry: entry.get("created_at", ""),
-            reverse=True,
-        )
-        return sorted_entries[:depth]
+        try:
+            normalized_jira_id = cls.normalize_ticket_id(jira_id)
+            
+            keys = db.query(ContextJiraIndex.group_key).filter(
+                ContextJiraIndex.jira_id == normalized_jira_id
+            ).all()
+            
+            if not keys:
+                raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
+                
+            key_list = [k[0] for k in keys]
+            entries = db.query(ContextEntry).filter(
+                ContextEntry.group_key.in_(key_list)
+            ).order_by(ContextEntry.created_at.desc()).limit(depth).all()
+            
+            return [cls._to_dict(e) for e in entries]
+        except SQLAlchemyError as ex:
+            raise StorageException(f"Database error during get_recent_by_jira: {str(ex)}")
 
     @classmethod
     def update(
-        cls, key: str, entry_id: str, content: str, metadata: dict | None
+        cls, db: Session, key: str, entry_id: str, content: str, metadata: dict | None
     ) -> dict:
         """Update an existing entry."""
-        store = cls._get_store()
-        if key not in store:
-            raise ContextNotFoundException(f"Key '{key}' not found")
-
-        for entry in store[key]:
-            if entry["entry_id"] == entry_id:
-                entry["content"] = content
-                entry["metadata"] = metadata or {}
-                entry["updated_at"] = datetime.now(timezone.utc).isoformat()
-                cls._save_store(store)
-                return entry
-
-        raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
+        try:
+            entry = db.query(ContextEntry).filter(
+                ContextEntry.group_key == key,
+                ContextEntry.id == entry_id
+            ).first()
+            
+            if not entry:
+                raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
+                
+            entry.content = content
+            entry.metadata_json = metadata or {}
+            entry.updated_at = datetime.now(timezone.utc)
+            
+            db.commit()
+            db.refresh(entry)
+            return cls._to_dict(entry)
+        except SQLAlchemyError as ex:
+            db.rollback()
+            raise StorageException(f"Database error during update: {str(ex)}")
 
     @classmethod
-    def delete(cls, key: str, entry_id: str) -> None:
+    def delete(cls, db: Session, key: str, entry_id: str) -> None:
         """Delete an entry. Removes the key if empty."""
-        store = cls._get_store()
-        if key not in store:
-            raise ContextNotFoundException(f"Key '{key}' not found")
-
-        deleted_entry = next((e for e in store[key] if e["entry_id"] == entry_id), None)
-        if deleted_entry is None:
-            raise ContextNotFoundException(
-                f"Entry '{entry_id}' not found in key '{key}'"
-            )
-
-        store[key] = [e for e in store[key] if e["entry_id"] != entry_id]
-
-        # If key bucket is empty, remove the key and clean up JIRA index
-        if not store[key]:
-            del store[key]
-            jira_index = cls._get_jira_index()
-            for ticket_id in deleted_entry["ticket_ids"]:
-                if ticket_id in jira_index:
-                    # Remove stale key reference for this ticket after bucket deletion.
-                    updated_keys = set(jira_index[ticket_id])
-                    updated_keys.discard(key)
-                    if not updated_keys:
-                        del jira_index[ticket_id]
-                    else:
-                        jira_index[ticket_id] = sorted(updated_keys)
-            cls._save_jira_index(jira_index)
-
-        cls._save_store(store)
+        try:
+            entry = db.query(ContextEntry).filter(
+                ContextEntry.group_key == key,
+                ContextEntry.id == entry_id
+            ).first()
+            
+            if not entry:
+                raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
+                
+            db.delete(entry)
+            db.flush()
+            
+            # Check if the key bucket is now empty
+            remaining = db.query(ContextEntry).filter(ContextEntry.group_key == key).count()
+            if remaining == 0:
+                # Remove JIRA index references for this key
+                db.query(ContextJiraIndex).filter(ContextJiraIndex.group_key == key).delete()
+            db.commit()
+        except SQLAlchemyError as ex:
+            db.rollback()
+            raise StorageException(f"Database error during delete: {str(ex)}")
