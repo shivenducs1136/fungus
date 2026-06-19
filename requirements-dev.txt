@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Test and development dependencies
+pytest==9.1.0
+httpx2==2.4.0
+httpcore2==2.4.0
+truststore==0.10.4

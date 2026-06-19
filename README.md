@@ -108,18 +108,30 @@ The goal is to preserve implementation rationale so future developers and future
 
 ## Running with Docker
 
-You can easily run the Fungus Knowledge Server and its required database using Docker Compose.
+Use Docker Compose profiles to run either a production-like runtime image (`release`) or a development image (`dev`).
 
-1. **Start the stack**:
+1. **Run release profile (runtime dependencies only):**
    ```bash
-   docker compose up --build -d
+   docker compose --profile release up --build -d
    ```
-   This will build the API image and start both the API and a PostgreSQL database in the background.
 
-2. **Access the API**:
-   The API will be available at `http://localhost:8000`. You can view the interactive Swagger documentation at `http://localhost:8000/docs`.
+2. **Run dev profile (runtime + dev dependencies, reload enabled):**
+   ```bash
+   docker compose --profile dev up --build -d
+   ```
 
-3. **Stop the stack**:
+3. **View logs:**
+   ```bash
+   docker compose logs -f
+   ```
+
+4. **Stop and remove containers:**
    ```bash
    docker compose down
    ```
+
+5. **Access the API:**
+   - Base URL: `http://localhost:8000`
+   - Swagger: `http://localhost:8000/docs`
+
+Note: Start only one API profile at a time (`release` or `dev`) because both map to port `8000`.
