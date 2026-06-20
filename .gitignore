@@ -30,7 +30,8 @@ jira_index.json
 knowledge_store.json
 
 # IDE / OS
-.vscode/settings.json
+.github
+.vscode
 .idea/
 *.swp
 *.swo

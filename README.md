@@ -136,5 +136,130 @@ Use Docker Compose profiles to run either a production-like runtime image (`rele
 
 Note: Start only one API profile at a time (`release` or `dev`) because both map to port `8000`.
 
+## MCP Server (stdio)
+
+This repository includes an MCP server layer that exposes two tools over `stdio` using the official Python SDK.
+
+### Tools
+
+- `save_knowledge` (generic)
+   - Inputs: `jira_ids`, plus either `chat_context` or `content`, optional `metadata`.
+   - Action: Stores active chat reasoning using `POST /api/v1/context/`.
+
+- `retrieve_knowledge` (generic)
+   - Inputs (option A): `jira_ids`, optional `depth`.
+   - Inputs (option B): `file_path`, `start_line`, optional `end_line`, optional `depth`.
+   - Action: If code location is provided, runs `git-scripts/extract_regex_from_commit.py` to infer JIRA IDs from commit history, then fetches context from FastAPI.
+
+- Aliases available for chat naming flexibility:
+   - `save_architectural_knowledge`
+   - `save_architecture_knowledge`
+   - `retrieve_architectural_knowledge`
+   - `retrieve_knowledge_from_code`
+
+### Intended Agent Flow
+
+1. User says save command with JIRA IDs.
+2. Client sends active chat text as `chat_context`.
+3. MCP tool saves the document to FastAPI/DB.
+
+For retrieval:
+
+1. User asks about selected code (for example "explain this function").
+2. Client provides selected file/line range.
+3. MCP tool extracts JIRA IDs from git history and fetches matching context.
+4. Tool returns both structured payload and a concatenated summary for chat display.
+
+### Run Locally
+
+1. Start the FastAPI Knowledge Server (for example with Docker or uvicorn).
+2. Start the MCP server process:
+
+```bash
+python -m app.mcp.server
+```
+
+### MCP Client Configuration
+
+Use the same stdio command for all clients:
+
+```bash
+python -m app.mcp.server
+```
+
+#### Claude Desktop
+
+Add to Claude's MCP config file (for example `claude_desktop_config.json`):
+
+```json
+{
+   "mcpServers": {
+      "fungus-knowledge": {
+         "command": "python",
+         "args": ["-m", "app.mcp.server"],
+         "cwd": "D:/Fungus/fungus",
+         "env": {
+            "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
+            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+         }
+      }
+   }
+}
+```
+
+#### Cursor
+
+Add to Cursor MCP config (same schema):
+
+```json
+{
+   "mcpServers": {
+      "fungus-knowledge": {
+         "command": "python",
+         "args": ["-m", "app.mcp.server"],
+         "cwd": "D:/Fungus/fungus",
+         "env": {
+            "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
+            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+         }
+      }
+   }
+}
+```
+
+#### GitHub Copilot (VS Code)
+
+**See detailed setup guide**: [VSCODE_MCP_SETUP.md](VSCODE_MCP_SETUP.md)
+
+Quick steps:
+
+1. **Start dependencies**:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+2. **Register MCP server in VS Code**:
+   - Press `Ctrl+Shift+P` → `MCP: Add Server`.
+   - Command: `python`
+   - Args: `-m app.mcp.server`
+   - Working directory: `D:\Fungus\fungus`
+   - Environment: Set `KNOWLEDGE_SERVER_BASE_URL=http://127.0.0.1:8000`
+
+3. **Reload window** and open Copilot Chat to access:
+   - `save_knowledge`
+   - `retrieve_knowledge`
+   - `retrieve_knowledge_from_code`
+
+- `KNOWLEDGE_SERVER_BASE_URL` (default: `http://127.0.0.1:8000`)
+- `KNOWLEDGE_SERVER_TIMEOUT_SECONDS` (default: `15`)
+
+### Validation Test
+
+Run MCP tests:
+
+```bash
+pytest tests/test_mcp_server.py -v
+```
+
 ## TODO
 - Migrate database interactions from synchronous `psycopg2-binary` + SQLAlchemy to asynchronous using `asyncpg` to follow FastAPI best practices for async I/O.
