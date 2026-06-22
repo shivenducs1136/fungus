@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+:root {
+  --ink: #0f172a;
+  --muted: #334155;
+  --card: #f8fafc;
+  --surface: #ffffff;
+  --line: #cbd5e1;
+  --brand: #0f766e;
+  --brand-strong: #115e59;
+  --danger: #b42318;
+  --ok: #0b6f4e;
+  --focus: #14b8a6;
+  --sans: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: var(--sans);
+  background:
+    radial-gradient(circle at 18% 10%, #ccfbf1 0%, transparent 42%),
+    radial-gradient(circle at 80% 18%, #fee2e2 0%, transparent 35%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
