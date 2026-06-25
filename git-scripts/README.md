@@ -13,7 +13,13 @@ options:
 
 ### Automated testing
 
-`py test_extract_regex_from_commit.py`
+From repository root:
+
+`./.venv/Scripts/python.exe -m pytest -q git-scripts/test_extract_regex_from_commit.py`
+
+From `git-scripts/` directory:
+
+`../.venv/Scripts/python.exe -m pytest -q test_extract_regex_from_commit.py`
 
 ### Manual testing
 
