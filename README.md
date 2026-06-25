@@ -130,9 +130,11 @@ Use Docker Compose profiles to run either a production-like runtime image (`rele
    docker compose down
    ```
 
-5. **Access the API:**
-   - Base URL: `http://localhost:8000`
-   - Swagger: `http://localhost:8000/docs`
+5. **Access the Application:**
+   - Frontend (Release): `http://localhost:3000`
+   - Frontend (Dev): `http://localhost:5173`
+   - API Base URL: `http://localhost:8000`
+   - API Swagger Docs: `http://localhost:8000/docs`
 
 Note: Start only one API profile at a time (`release` or `dev`) because both map to port `8000`.
 

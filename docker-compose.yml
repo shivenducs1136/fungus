@@ -35,6 +35,41 @@ services:
       - fungus_network
     restart: unless-stopped
 
+  frontend-release:
+    profiles: ["release"]
+    build:
+      context: ./frontend
+      target: release
+    container_name: fungus_frontend_release
+    ports:
+      - "3000:80"
+    env_file:
+      - .env
+    depends_on:
+      - api-release
+    networks:
+      - fungus_network
+    restart: unless-stopped
+
+  frontend-dev:
+    profiles: ["dev"]
+    build:
+      context: ./frontend
+      target: dev
+    container_name: fungus_frontend_dev
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api-dev
+    networks:
+      - fungus_network
+    restart: unless-stopped
+
   db:
     image: postgres:15-alpine
     container_name: fungus_db
