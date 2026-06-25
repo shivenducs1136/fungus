@@ -223,6 +223,22 @@ cd frontend
 npm run test:coverage
 ```
 
+### Knowledge Server Logging
+
+When you run the FastAPI Knowledge Server, logs are written to the configured log directory.
+
+Start the API server:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Default log files:
+
+- `logs/knowledge_server.log` (FastAPI knowledge server)
+- `logs/mcp_server.log` (MCP stdio server)
+- `logs/extract_regex_from_commit.log` (git extraction script)
+
 ### MCP Client Configuration
 
 Use the same stdio command for all clients:
@@ -303,7 +319,7 @@ Quick steps:
 | `KNOWLEDGE_SERVER_BASE_URL` | `http://127.0.0.1:8000` | URL of the FastAPI knowledge server |
 | `KNOWLEDGE_SERVER_TIMEOUT_SECONDS` | `15` | HTTP timeout for knowledge server calls |
 | `FUNGUS_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
-| `FUNGUS_LOG_DIR` | `<repo_root>/logs/` | Directory where `mcp_server.log` and `extract_regex_from_commit.log` are written |
+| `FUNGUS_LOG_DIR` | `<repo_root>/logs/` | Directory where `knowledge_server.log`, `mcp_server.log`, and `extract_regex_from_commit.log` are written |
 
 Copy `.env.example` to `.env` and adjust as needed.
 

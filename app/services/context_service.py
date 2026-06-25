@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.models.domain_models import ContextEntry, ContextJiraIndex
 from app.core.exceptions import ContextNotFoundException, StorageException
+from app.core.logging_config import get_logger
+
+log = get_logger("fungus.knowledge_server.service.context")
 
 class ContextService:
     """Service for CRUD operations on context entries indexed by JIRA IDs."""
@@ -43,6 +46,7 @@ class ContextService:
     @classmethod
     def create(cls, db: Session, ticket_ids: list[str], content: str, metadata: dict | None) -> dict:
         """Create a new context entry."""
+        log.info("create called - ticket_count=%d content_length=%d", len(ticket_ids), len(content))
         normalized_ticket_ids = cls.normalize_ticket_ids(ticket_ids)
         key = cls.generate_key(normalized_ticket_ids)
         entry_id = str(uuid.uuid4())
@@ -75,9 +79,11 @@ class ContextService:
                         pass
                     
             db.commit()
+            log.info("create success - key=%s entry_id=%s", key, entry_id)
             return {"key": key, "entry_id": entry_id}
         except SQLAlchemyError as ex:
             db.rollback()
+            log.error("create failed - %s", ex)
             raise StorageException(f"Database error during create: {str(ex)}")
 
     @classmethod
@@ -85,8 +91,10 @@ class ContextService:
         """List all stored keys."""
         try:
             rows = db.query(ContextEntry.group_key).distinct().all()
+            log.info("list_keys success - count=%d", len(rows))
             return [r[0] for r in rows]
         except SQLAlchemyError as ex:
+            log.error("list_keys failed - %s", ex)
             raise StorageException(f"Database error during list_keys: {str(ex)}")
 
     @classmethod
@@ -95,9 +103,12 @@ class ContextService:
         try:
             entries = db.query(ContextEntry).filter(ContextEntry.group_key == key).all()
             if not entries:
+                log.warning("get_all not found - key=%s", key)
                 raise ContextNotFoundException(f"Key '{key}' not found")
+            log.info("get_all success - key=%s count=%d", key, len(entries))
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
+            log.error("get_all failed - key=%s error=%s", key, ex)
             raise StorageException(f"Database error during get_all: {str(ex)}")
 
     @classmethod
@@ -109,9 +120,12 @@ class ContextService:
                 ContextEntry.id == entry_id
             ).first()
             if not entry:
+                log.warning("get_entry not found - key=%s entry_id=%s", key, entry_id)
                 raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
+            log.info("get_entry success - key=%s entry_id=%s", key, entry_id)
             return cls._to_dict(entry)
         except SQLAlchemyError as ex:
+            log.error("get_entry failed - key=%s entry_id=%s error=%s", key, entry_id, ex)
             raise StorageException(f"Database error during get_entry: {str(ex)}")
 
     @classmethod
@@ -126,13 +140,15 @@ class ContextService:
             ).all()
             
             if not keys:
+                log.warning("get_by_jira not found - jira_id=%s normalized=%s", jira_id, normalized_jira_id)
                 raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
                 
             key_list = [k[0] for k in keys]
             entries = db.query(ContextEntry).filter(ContextEntry.group_key.in_(key_list)).all()
-            
+            log.info("get_by_jira success - jira_id=%s count=%d", jira_id, len(entries))
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
+            log.error("get_by_jira failed - jira_id=%s error=%s", jira_id, ex)
             raise StorageException(f"Database error during get_by_jira: {str(ex)}")
 
     @classmethod
@@ -146,15 +162,17 @@ class ContextService:
             ).all()
             
             if not keys:
+                log.warning("get_recent_by_jira not found - jira_id=%s normalized=%s", jira_id, normalized_jira_id)
                 raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
                 
             key_list = [k[0] for k in keys]
             entries = db.query(ContextEntry).filter(
                 ContextEntry.group_key.in_(key_list)
             ).order_by(ContextEntry.created_at.desc()).limit(depth).all()
-            
+            log.info("get_recent_by_jira success - jira_id=%s depth=%d count=%d", jira_id, depth, len(entries))
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
+            log.error("get_recent_by_jira failed - jira_id=%s depth=%d error=%s", jira_id, depth, ex)
             raise StorageException(f"Database error during get_recent_by_jira: {str(ex)}")
 
     @classmethod
@@ -162,6 +180,7 @@ class ContextService:
         cls, db: Session, key: str, entry_id: str, content: str, metadata: dict | None
     ) -> dict:
         """Update an existing entry."""
+        log.info("update called - key=%s entry_id=%s content_length=%d", key, entry_id, len(content))
         try:
             entry = db.query(ContextEntry).filter(
                 ContextEntry.group_key == key,
@@ -169,6 +188,7 @@ class ContextService:
             ).first()
             
             if not entry:
+                log.warning("update not found - key=%s entry_id=%s", key, entry_id)
                 raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
                 
             entry.content = content
@@ -177,14 +197,17 @@ class ContextService:
             
             db.commit()
             db.refresh(entry)
+            log.info("update success - key=%s entry_id=%s", key, entry_id)
             return cls._to_dict(entry)
         except SQLAlchemyError as ex:
             db.rollback()
+            log.error("update failed - key=%s entry_id=%s error=%s", key, entry_id, ex)
             raise StorageException(f"Database error during update: {str(ex)}")
 
     @classmethod
     def delete(cls, db: Session, key: str, entry_id: str) -> None:
         """Delete an entry. Removes the key if empty."""
+        log.info("delete called - key=%s entry_id=%s", key, entry_id)
         try:
             entry = db.query(ContextEntry).filter(
                 ContextEntry.group_key == key,
@@ -192,6 +215,7 @@ class ContextService:
             ).first()
             
             if not entry:
+                log.warning("delete not found - key=%s entry_id=%s", key, entry_id)
                 raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
                 
             db.delete(entry)
@@ -203,6 +227,8 @@ class ContextService:
                 # Remove JIRA index references for this key
                 db.query(ContextJiraIndex).filter(ContextJiraIndex.group_key == key).delete()
             db.commit()
+            log.info("delete success - key=%s entry_id=%s remaining=%d", key, entry_id, remaining)
         except SQLAlchemyError as ex:
             db.rollback()
+            log.error("delete failed - key=%s entry_id=%s error=%s", key, entry_id, ex)
             raise StorageException(f"Database error during delete: {str(ex)}")

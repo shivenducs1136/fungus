@@ -1,16 +1,14 @@
 """MCP stdio server for storing and retrieving architectural knowledge."""
 
-import logging
-import logging.handlers
 import os
 import re
 import string
 import sys
 from pathlib import Path
 from typing import Any
-import asyncio  # Make sure to import asyncio at the top of your file
 import httpx
 from mcp.server.fastmcp import FastMCP
+from app.core.logging_config import get_logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "git-scripts"))
 from extract_regex_from_commit import get_git_commits, extract_matches  # noqa: E402
@@ -34,21 +32,7 @@ mcp = FastMCP("fungus-knowledge-mcp")
 _LOG_DIR = Path(os.getenv("FUNGUS_LOG_DIR", Path(__file__).resolve().parents[2] / "logs"))
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-_handler = logging.handlers.RotatingFileHandler(
-    _LOG_DIR / "mcp_server.log",
-    maxBytes=5 * 1024 * 1024,
-    backupCount=5,
-    encoding="utf-8",
-)
-_handler.setFormatter(logging.Formatter(
-    "%(asctime)s  %(levelname)-8s  %(funcName)s  %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-))
-
-log = logging.getLogger("fungus.mcp.server")
-log.setLevel(os.getenv("FUNGUS_LOG_LEVEL", "INFO").upper())
-log.addHandler(_handler)
-log.propagate = False
+log = get_logger("fungus.mcp.server", "mcp_server.log")
 
 
 def _base_url() -> str:
