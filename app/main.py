@@ -18,14 +18,20 @@ from app.core.handlers import (
 )
 
 from app.core.database import engine, Base
+from app.core.logging_config import get_logger
 import app.models.domain_models # Ensure models are loaded
+
+log = get_logger("fungus.knowledge_server.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: create database tables
+    log.info("Knowledge server startup - ensuring database tables exist")
     Base.metadata.create_all(bind=engine)
+    log.info("Database tables ready")
     yield
     # Shutdown logic if any
+    log.info("Knowledge server shutdown")
 
 app = FastAPI(
     title="Fungus Knowledge Server",
@@ -33,6 +39,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+log.info("FastAPI application initialized")
 
 app.add_middleware(
     CORSMiddleware,

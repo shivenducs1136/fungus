@@ -1,6 +1,4 @@
 import argparse
-import logging
-import logging.handlers
 import re
 import json
 import sys
@@ -8,25 +6,13 @@ import os
 from pathlib import Path
 
 import git
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-_LOG_DIR = Path(os.getenv("FUNGUS_LOG_DIR", Path(__file__).resolve().parents[1] / "logs"))
-_LOG_DIR.mkdir(parents=True, exist_ok=True)
+from app.core.logging_config import get_logger
 
-_handler = logging.handlers.RotatingFileHandler(
-    _LOG_DIR / "extract_regex_from_commit.log",
-    maxBytes=5 * 1024 * 1024,
-    backupCount=5,
-    encoding="utf-8",
-)
-_handler.setFormatter(logging.Formatter(
-    "%(asctime)s  %(levelname)-8s  %(funcName)s  %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-))
-
-log = logging.getLogger("fungus.git_scripts.extract_regex")
-log.setLevel(os.getenv("FUNGUS_LOG_LEVEL", "INFO").upper())
-log.addHandler(_handler)
-log.propagate = False
+log = get_logger("fungus.git_scripts.extract_regex", "extract_regex_from_commit.log")
 
 
 def get_git_commits(filepath, start_line, end_line, depth):
