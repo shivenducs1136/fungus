@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "fungus-knowledge": {
+      "command": "D:\\myrepos\\fungus\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "app.mcp.server"
+      ],
+      "env": {
+        "KNOWLEDGE_SERVER_BASE_URL": "http://192.168.1.6:8000",
+        "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+      }
+    }
+  }
+}

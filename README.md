@@ -200,7 +200,8 @@ Add to Claude's MCP config file (for example `claude_desktop_config.json`):
          "cwd": "D:/Fungus/fungus",
          "env": {
             "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
-            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15",
+            "FUNGUS_LOG_LEVEL": "INFO"
          }
       }
    }
@@ -220,7 +221,8 @@ Add to Cursor MCP config (same schema):
          "cwd": "D:/Fungus/fungus",
          "env": {
             "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
-            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15",
+            "FUNGUS_LOG_LEVEL": "INFO"
          }
       }
    }
@@ -250,8 +252,22 @@ Quick steps:
    - `retrieve_knowledge`
    - `retrieve_knowledge_from_code`
 
-- `KNOWLEDGE_SERVER_BASE_URL` (default: `http://127.0.0.1:8000`)
-- `KNOWLEDGE_SERVER_TIMEOUT_SECONDS` (default: `15`)
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `KNOWLEDGE_SERVER_BASE_URL` | `http://127.0.0.1:8000` | URL of the FastAPI knowledge server |
+| `KNOWLEDGE_SERVER_TIMEOUT_SECONDS` | `15` | HTTP timeout for knowledge server calls |
+| `FUNGUS_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
+| `FUNGUS_LOG_DIR` | `<repo_root>/logs/` | Directory where `mcp_server.log` and `extract_regex_from_commit.log` are written |
+
+Copy `.env.example` to `.env` and adjust as needed.
+
+**Log level quick reference:**
+- `DEBUG` — full trace including every git call, HTTP request detail, and intermediate results
+- `INFO` — normal operation: tool calls, JIRA IDs resolved, HTTP responses (default)
+- `WARNING` — only misconfiguration warnings and recoverable issues
+- `ERROR` / `CRITICAL` — failures only
 
 ### Validation Test
 
