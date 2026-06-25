@@ -179,6 +179,48 @@ For retrieval:
 python -m app.mcp.server
 ```
 
+### Run Tests
+
+Run all commands from repository root `D:/Fungus/fungus` unless noted.
+
+#### Backend (Python)
+
+```bash
+.venv/Scripts/python.exe -m pytest -q
+```
+
+Run only API tests:
+
+```bash
+.venv/Scripts/python.exe -m pytest -q tests/test_api.py
+```
+
+Run only MCP server tests:
+
+```bash
+.venv/Scripts/python.exe -m pytest -q tests/test_mcp_server.py
+```
+
+Run only git-scripts tests:
+
+```bash
+.venv/Scripts/python.exe -m pytest -q git-scripts/test_extract_regex_from_commit.py
+```
+
+#### Frontend (Vite + Vitest)
+
+```bash
+cd frontend
+npm test -- --run
+```
+
+Coverage:
+
+```bash
+cd frontend
+npm run test:coverage
+```
+
 ### MCP Client Configuration
 
 Use the same stdio command for all clients:

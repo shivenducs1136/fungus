@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "git-scripts"))
 from extract_regex_from_commit import get_git_commits, extract_matches  # noqa: E402
 
 
-DEFAULT_KNOWLEDGE_SERVER_URL = "http://192.168.1.6:8000"
+DEFAULT_KNOWLEDGE_SERVER_URL = "http://127.0.0.1:8000"
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_JIRA_REGEX = r"\[[A-Z][A-Z0-9]+-\d+\]"
 DEFAULT_RETRIEVAL_DEPTH = 3
