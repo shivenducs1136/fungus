@@ -1,19 +1,22 @@
 """MCP stdio server for storing and retrieving architectural knowledge."""
 
-import json
+import logging
+import logging.handlers
 import os
 import re
-import subprocess
-import sys
 import string
+import sys
 from pathlib import Path
 from typing import Any
-
+import asyncio  # Make sure to import asyncio at the top of your file
 import httpx
 from mcp.server.fastmcp import FastMCP
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "git-scripts"))
+from extract_regex_from_commit import get_git_commits, extract_matches  # noqa: E402
 
-DEFAULT_KNOWLEDGE_SERVER_URL = "http://127.0.0.1:8000"
+
+DEFAULT_KNOWLEDGE_SERVER_URL = "http://192.168.1.6:8000"
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_JIRA_REGEX = r"\[[A-Z][A-Z0-9]+-\d+\]"
 DEFAULT_RETRIEVAL_DEPTH = 3
@@ -28,18 +31,46 @@ SUMMARY_SECTION_NAMES = (
 
 mcp = FastMCP("fungus-knowledge-mcp")
 
+_LOG_DIR = Path(os.getenv("FUNGUS_LOG_DIR", Path(__file__).resolve().parents[2] / "logs"))
+_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+_handler = logging.handlers.RotatingFileHandler(
+    _LOG_DIR / "mcp_server.log",
+    maxBytes=5 * 1024 * 1024,
+    backupCount=5,
+    encoding="utf-8",
+)
+_handler.setFormatter(logging.Formatter(
+    "%(asctime)s  %(levelname)-8s  %(funcName)s  %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+))
+
+log = logging.getLogger("fungus.mcp.server")
+log.setLevel(os.getenv("FUNGUS_LOG_LEVEL", "INFO").upper())
+log.addHandler(_handler)
+log.propagate = False
+
 
 def _base_url() -> str:
     """Resolve the knowledge server base URL from environment or default."""
-    return os.getenv("KNOWLEDGE_SERVER_BASE_URL", DEFAULT_KNOWLEDGE_SERVER_URL).rstrip("/")
+    url = os.getenv("KNOWLEDGE_SERVER_BASE_URL", DEFAULT_KNOWLEDGE_SERVER_URL).rstrip("/")
+    log.debug("Resolved base URL: %s", url)
+    return url
 
 
 def _timeout_seconds() -> float:
     """Resolve outbound HTTP timeout for knowledge server calls."""
     raw = os.getenv("KNOWLEDGE_SERVER_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS))
     try:
-        return float(raw)
+        result = float(raw)
+        log.debug("Resolved timeout: %.1f seconds (raw env value: %r)", result, raw)
+        return result
     except ValueError:
+        log.warning(
+            "Invalid KNOWLEDGE_SERVER_TIMEOUT_SECONDS value %r — falling back to default %.1f",
+            raw,
+            DEFAULT_TIMEOUT_SECONDS,
+        )
         return DEFAULT_TIMEOUT_SECONDS
 
 
@@ -56,16 +87,6 @@ def _error_payload(operation: str, _exc: Exception) -> dict[str, Any]:
     return {"message": "Something went wrong. Please try again."}
 
 
-def _repo_root() -> Path:
-    """Resolve the repository root path from this module location."""
-    return Path(__file__).resolve().parents[2]
-
-
-def _git_script_path() -> Path:
-    """Resolve path to the git commit regex extraction script."""
-    return _repo_root() / "git-scripts" / "extract_regex_from_commit.py"
-
-
 def _normalize_jira_id(jira_id: str) -> str:
     """Normalize bracketed and unbracketed JIRA IDs to API format."""
     ticket = jira_id.strip()
@@ -76,9 +97,9 @@ def _normalize_jira_id(jira_id: str) -> str:
 
 def _extract_jira_ids_from_output(chunks: list[str]) -> list[str]:
     """Extract and deduplicate JIRA IDs from script output chunks, preserving order."""
+    log.debug("Extracting JIRA IDs from %d output chunks", len(chunks))
     seen: set[str] = set()
     ordered: list[str] = []
-
     for chunk in chunks:
         for token in re.findall(DEFAULT_JIRA_REGEX, chunk):
             cleaned = _normalize_jira_id(token)
@@ -86,6 +107,7 @@ def _extract_jira_ids_from_output(chunks: list[str]) -> list[str]:
                 seen.add(cleaned)
                 ordered.append(cleaned)
 
+    log.debug("Extracted %d unique JIRA IDs: %s", len(ordered), ordered)
     return ordered
 
 
@@ -96,35 +118,21 @@ def _extract_jira_ids_for_code(
     depth: int,
     jira_regex: str,
 ) -> list[str]:
-    """Use the git helper script to derive JIRA IDs from commit history for a code range."""
-    script = _git_script_path()
-    if not script.exists():
-        raise FileNotFoundError(f"Git script not found: {script}")
-
-    cmd = [
-        sys.executable,
-        str(script),
+    """Derive JIRA IDs from commit history by calling git-script functions in-process."""
+    log.info(
+        "Extracting JIRA IDs for file=%r lines=%d-%d depth=%d regex=%r",
         file_path,
+        start_line,
+        end_line,
+        depth,
         jira_regex,
-        str(start_line),
-        "--end-line",
-        str(end_line),
-        "--depth",
-        str(depth),
-    ]
-    output = subprocess.check_output(
-        cmd,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        cwd=str(_repo_root()),
     )
-    payload = json.loads(output)
-    if not isinstance(payload, list):
-        raise ValueError("Unexpected git script output format")
-
-    return _extract_jira_ids_from_output(payload)
+    git_output = get_git_commits(file_path, start_line, end_line, depth)
+    raw_chunks = extract_matches(git_output, jira_regex)
+    log.debug("extract_matches returned %d raw chunk(s)", len(raw_chunks))
+    result = _extract_jira_ids_from_output(raw_chunks)
+    log.info("Resolved %d JIRA IDs from code range: %s", len(result), result)
+    return result
 
 
 def _build_section_pattern(section_name: str) -> re.Pattern[str]:
@@ -276,44 +284,88 @@ def _resolve_save_content(
 
 async def _save_context(ticket_ids: list[str], content: str, metadata: dict[str, Any] | None) -> dict[str, Any]:
     """Persist knowledge content via the FastAPI knowledge endpoint."""
+    log.info("Saving context for ticket_ids=%s content_length=%d has_metadata=%s", ticket_ids, len(content), metadata is not None)
     payload = {
         "ticket_ids": ticket_ids,
         "content": content,
         "metadata": metadata,
     }
     url = f"{_base_url()}/api/v1/context/"
+    log.debug("POST %s payload ticket_ids=%s content_preview=%r", url, ticket_ids, content[:200])
 
-    async with httpx.AsyncClient(timeout=_timeout_seconds()) as client:
-        response = await client.post(url, json=payload)
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient(timeout=_timeout_seconds()) as client:
+            response = await client.post(url, json=payload)
+            log.debug("Response status: %d", response.status_code)
+            response.raise_for_status()
+            data = response.json()
+            log.info("Context saved successfully — key=%s entry_id=%s", data.get("key"), data.get("entry_id"))
+            return data
+    except httpx.HTTPStatusError as exc:
+        log.error(
+            "HTTP error saving context — status=%d url=%s body=%r",
+            exc.response.status_code,
+            exc.request.url,
+            exc.response.text[:500],
+        )
+        raise
+    except httpx.RequestError as exc:
+        log.error("Network error saving context — %s: %s", type(exc).__name__, exc)
+        raise
 
 
 async def _retrieve_context(jira_ids: list[str], depth: int | None) -> dict[str, list[dict[str, Any]]]:
     """Fetch architectural context entries for supplied JIRA IDs."""
+    log.info("Retrieving context for %d JIRA IDs: %s  depth=%s", len(jira_ids), jira_ids, depth)
     results: dict[str, list[dict[str, Any]]] = {}
 
-    async with httpx.AsyncClient(timeout=_timeout_seconds()) as client:
-        for jira_id in jira_ids:
-            normalized = _normalize_jira_id(jira_id)
+    try:
+        async with httpx.AsyncClient(timeout=_timeout_seconds()) as client:
+            for jira_id in jira_ids:
+                normalized = _normalize_jira_id(jira_id)
+                log.debug("normalized jira id: %s", normalized)
+                if depth is not None:
+                    if depth < 1:
+                        log.error("Invalid depth value %d — must be >= 1", depth)
+                        raise ValueError("depth must be >= 1 when provided")
+                    url = f"{_base_url()}/api/v1/context/jira/{normalized}"
+                    log.debug("GET %s params depth=%d", url, depth)
+                    response = await client.get(url, params={"depth": depth})
+                else:
+                    url = f"{_base_url()}/api/v1/context/jira/{normalized}"
+                    log.debug("GET %s (no depth filter)", url)
+                    response = await client.get(url)
 
-            if depth is not None:
-                if depth < 1:
-                    raise ValueError("depth must be >= 1 when provided")
-                url = f"{_base_url()}/api/v1/context/jira/{normalized}/recent"
-                response = await client.get(url, params={"depth": depth})
-            else:
-                url = f"{_base_url()}/api/v1/context/jira/{normalized}"
-                response = await client.get(url)
+                log.debug("Response for %s: status=%d", normalized, response.status_code)
 
-            if response.status_code == 404:
-                results[normalized] = []
-                continue
+                if response.status_code == 404:
+                    log.info("No entries found for JIRA ID %s (404)", normalized)
+                    results[normalized] = []
+                    continue
 
-            response.raise_for_status()
-            body = response.json()
-            results[normalized] = body if isinstance(body, list) else []
+                response.raise_for_status()
+                body = response.json()
+                entries = body if isinstance(body, list) else []
+                log.info("Retrieved %d entries for JIRA ID %s", len(entries), normalized)
+                results[normalized] = entries
 
+    except httpx.HTTPStatusError as exc:
+        log.error(
+            "HTTP error retrieving context — status=%d url=%s body=%r",
+            exc.response.status_code,
+            exc.request.url,
+            exc.response.text[:500],
+        )
+        raise
+    except httpx.RequestError as exc:
+        log.error("Network error retrieving context — %s: %s", type(exc).__name__, exc)
+        raise
+
+    log.info(
+        "Retrieval complete — %d JIRA IDs queried, total entries: %d",
+        len(results),
+        sum(len(v) for v in results.values()),
+    )
     return results
 
 
@@ -331,10 +383,21 @@ async def save_knowledge(
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Persist architectural knowledge and return generated key metadata."""
+    log.info(
+        "save_knowledge called — jira_ids=%s has_chat_context=%s has_content=%s has_metadata=%s",
+        jira_ids,
+        chat_context is not None,
+        content is not None,
+        metadata is not None,
+    )
     resolved_content = _resolve_save_content(chat_context, content, metadata)
+    log.debug("Resolved content length: %d chars", len(resolved_content))
+
     if not jira_ids:
+        log.warning("save_knowledge rejected — no JIRA IDs provided")
         return {"message": "Please add JIRA ID(s) against which the context should be saved."}
     if not resolved_content:
+        log.warning("save_knowledge rejected — no resolvable content from chat_context/content/metadata")
         return {
             "message": (
                 "Missing chat content. The MCP server cannot read the active chat by itself; "
@@ -346,8 +409,10 @@ async def save_knowledge(
         data = await _save_context(jira_ids, resolved_content, metadata)
         key = data.get("key", "<unknown-key>")
         entry_id = data.get("entry_id", "<unknown-entry>")
+        log.info("save_knowledge succeeded — key=%s entry_id=%s", key, entry_id)
         return {"message": f"Context saved successfully for {key} (entry_id: {entry_id})."}
     except Exception as exc:  # noqa: BLE001 - convert all network/protocol errors to tool payload
+        log.error("save_knowledge failed — %s: %s", type(exc).__name__, exc)
         return _error_payload("save_knowledge", exc)
 
 
@@ -395,15 +460,26 @@ async def retrieve_knowledge(
     jira_regex: str = DEFAULT_JIRA_REGEX,
 ) -> dict[str, Any]:
     """Fetch architectural context entries from explicit or git-derived JIRA IDs."""
+    log.info(
+        "retrieve_knowledge called — explicit_jira_ids=%s file_path=%r start_line=%s end_line=%s depth=%s",
+        jira_ids,
+        file_path,
+        start_line,
+        end_line,
+        depth,
+    )
     resolved_jira_ids = list(jira_ids or [])
 
     if not resolved_jira_ids and file_path:
         if start_line is None:
+            log.warning("retrieve_knowledge rejected — file_path provided but start_line missing")
             return {"message": "start_line is required when file_path is provided"}
         actual_end_line = end_line if end_line is not None else start_line
         effective_depth = _resolve_depth(depth)
+        log.debug("Code-range mode — file=%r lines=%d-%d effective_depth=%d", file_path, start_line, actual_end_line, effective_depth)
 
         if actual_end_line < start_line:
+            log.warning("retrieve_knowledge rejected — end_line %d < start_line %d", actual_end_line, start_line)
             return {"message": "end_line must be >= start_line"}
 
         try:
@@ -414,21 +490,28 @@ async def retrieve_knowledge(
                 depth=effective_depth,
                 jira_regex=jira_regex,
             )
+            log.info("Extracted %d JIRA IDs from git history: %s", len(resolved_jira_ids), resolved_jira_ids)
         except Exception as exc:  # noqa: BLE001
+            log.error("JIRA ID extraction from git history failed — %s: %s", type(exc).__name__, exc)
             return _error_payload("retrieve_knowledge", exc)
 
     if not resolved_jira_ids:
+        log.warning("retrieve_knowledge — no JIRA IDs available after resolution")
         return {"message": "No jira_ids provided or extracted from git history"}
 
     try:
         results = await _retrieve_context(resolved_jira_ids, depth)
         summary = _format_retrieval_summary(results).strip()
         if not summary:
+            log.info("retrieve_knowledge — retrieval succeeded but no entries found for %s", resolved_jira_ids)
             summary = "No architectural knowledge entries found for the provided JIRA IDs."
+        else:
+            log.info("retrieve_knowledge succeeded — summary length=%d chars", len(summary))
         return {
             "message": summary,
         }
     except Exception as exc:  # noqa: BLE001 - convert all network/protocol errors to tool payload
+        log.error("retrieve_knowledge failed during context fetch — %s: %s", type(exc).__name__, exc)
         return _error_payload("retrieve_knowledge", exc)
 
 
@@ -469,7 +552,9 @@ async def retrieve_knowledge_from_code(
 
 def main() -> None:
     """Run the MCP server over stdio for desktop clients."""
+    log.info("Starting fungus-knowledge-mcp server (transport=stdio) log_dir=%s", _LOG_DIR)
     mcp.run(transport="stdio")
+    log.info("MCP server exited")
 
 
 if __name__ == "__main__":
