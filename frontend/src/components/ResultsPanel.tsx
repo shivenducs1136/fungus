@@ -9,8 +9,11 @@ export function ResultsPanel({ manager }: ResultsPanelProps) {
   return (
     <section className="panel">
       <div className="panel-header">
-        <h2>Results</h2>
-        <p>{manager.filteredEntries.length} matching entries</p>
+        <div>
+          <h2>3. Review and Refine</h2>
+          <p className="panel-subtitle">Filter, inspect metadata, and update entries safely.</p>
+        </div>
+        <p className="results-count">{manager.filteredEntries.length} matching entries</p>
       </div>
 
       <div className="filters-grid">
@@ -53,7 +56,12 @@ export function ResultsPanel({ manager }: ResultsPanelProps) {
           <EntryCard key={entry.entry_id} entry={entry} manager={manager} />
         ))}
 
-        {!manager.pageItems.length ? <p className="empty">No entries to display.</p> : null}
+        {!manager.pageItems.length ? (
+          <div className="empty">
+            <h3>No entries yet</h3>
+            <p>Run a search, or create your first context entry from the left panel.</p>
+          </div>
+        ) : null}
       </div>
 
       <div className="pager">
@@ -86,8 +94,96 @@ interface EntryCardProps {
   manager: UseContextManagerResult
 }
 
+const SECTION_TITLES = [
+  'Problem',
+  'Proposed direction',
+  'Decision',
+  'Alternatives considered',
+  'Constraints',
+  'Impact/risk',
+  'Validation performed',
+]
+
+interface EntrySection {
+  title: string
+  paragraphs: string[]
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function toParagraphs(text: string): string[] {
+  return text
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+}
+
+function parseEntrySections(content: string): EntrySection[] {
+  const normalized = content.replace(/\r\n/g, '\n').trim()
+  if (!normalized) {
+    return []
+  }
+
+  const titlePattern = new RegExp(`\\b(${SECTION_TITLES.map(escapeRegex).join('|')})\\s*:`, 'gi')
+  const marked = normalized.replace(titlePattern, (_match, title: string) => `\n\n@@SECTION@@${title}:`)
+
+  const rawSections = marked
+    .split('@@SECTION@@')
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+
+  const sections: EntrySection[] = []
+  for (const rawSection of rawSections) {
+    const separatorIndex = rawSection.indexOf(':')
+    if (separatorIndex <= 0) {
+      continue
+    }
+
+    const title = rawSection.slice(0, separatorIndex).trim()
+    if (!SECTION_TITLES.includes(title)) {
+      continue
+    }
+
+    const body = rawSection.slice(separatorIndex + 1).trim()
+    if (!body) {
+      continue
+    }
+
+    sections.push({
+      title,
+      paragraphs: toParagraphs(body),
+    })
+  }
+
+  return sections
+}
+
+function FormattedEntryContent({ content }: { content: string }) {
+  const sections = parseEntrySections(content)
+
+  if (!sections.length) {
+    return <p className="entry-content">{content}</p>
+  }
+
+  return (
+    <div className="entry-content structured-content">
+      {sections.map((section) => (
+        <section key={section.title} className="entry-section">
+          <h4>{section.title}</h4>
+          {section.paragraphs.map((paragraph, index) => (
+            <p key={`${section.title}-${index}`}>{paragraph}</p>
+          ))}
+        </section>
+      ))}
+    </div>
+  )
+}
+
 function EntryCard({ entry, manager }: EntryCardProps) {
   const isEditing = manager.editingId === entry.entry_id
+  const saveDisabled = Boolean(manager.editMetadataValidationError)
 
   return (
     <article className="entry-card">
@@ -124,11 +220,19 @@ function EntryCard({ entry, manager }: EntryCardProps) {
               rows={4}
               value={manager.editMetadata}
               onChange={(event) => manager.setEditMetadata(event.target.value)}
+              className={manager.editMetadataValidationError ? 'field-error' : ''}
             />
+            {manager.editMetadataValidationError ? (
+              <span className="inline-error" role="alert">
+                {manager.editMetadataValidationError}
+              </span>
+            ) : (
+              <span className="inline-success">Metadata JSON looks valid.</span>
+            )}
           </label>
           <div className="entry-actions">
-            <button type="button" onClick={() => void manager.onSaveEdit(entry)}>
-              Save
+            <button type="button" onClick={() => void manager.onSaveEdit(entry)} disabled={saveDisabled}>
+              {saveDisabled ? 'Fix JSON to save' : 'Save'}
             </button>
             <button type="button" className="ghost" onClick={() => manager.setEditingId(null)}>
               Cancel
@@ -137,7 +241,7 @@ function EntryCard({ entry, manager }: EntryCardProps) {
         </div>
       ) : (
         <>
-          <p className="entry-content">{entry.content}</p>
+          <FormattedEntryContent content={entry.content} />
           <pre>{JSON.stringify(entry.metadata ?? {}, null, 2)}</pre>
         </>
       )}

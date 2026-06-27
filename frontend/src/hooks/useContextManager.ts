@@ -23,6 +23,8 @@ export interface UseContextManagerResult {
   loading: boolean
   error: string
   statusMessage: string
+  createError: string
+  createStatusMessage: string
 
   ticketInput: string
   setTicketInput: (value: string) => void
@@ -30,6 +32,7 @@ export interface UseContextManagerResult {
   setContentInput: (value: string) => void
   metadataInput: string
   setMetadataInput: (value: string) => void
+  metadataValidationError: string
 
   queryFilter: string
   setQueryFilter: (value: string) => void
@@ -46,6 +49,7 @@ export interface UseContextManagerResult {
   setEditContent: (value: string) => void
   editMetadata: string
   setEditMetadata: (value: string) => void
+  editMetadataValidationError: string
 
   filteredEntries: ContextEntry[]
   pageItems: ContextEntry[]
@@ -53,6 +57,7 @@ export interface UseContextManagerResult {
 
   onSearch: () => Promise<void>
   onCreate: () => Promise<void>
+  clearCreateFeedback: () => void
   beginEdit: (entry: ContextEntry) => void
   onSaveEdit: (entry: ContextEntry) => Promise<void>
   onDelete: (entry: ContextEntry) => Promise<void>
@@ -68,10 +73,13 @@ export function useContextManager(): UseContextManagerResult {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
+  const [createError, setCreateError] = useState('')
+  const [createStatusMessage, setCreateStatusMessage] = useState('')
 
   const [ticketInput, setTicketInput] = useState('')
   const [contentInput, setContentInput] = useState('')
-  const [metadataInput, setMetadataInput] = useState('{"source":"portal"}')
+  const [metadataInput, setMetadataInputState] = useState('{"source":"portal"}')
+  const [metadataValidationError, setMetadataValidationError] = useState('')
 
   const [queryFilter, setQueryFilter] = useState('')
   const [jiraFilter, setJiraFilter] = useState('')
@@ -80,7 +88,8 @@ export function useContextManager(): UseContextManagerResult {
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
-  const [editMetadata, setEditMetadata] = useState('{}')
+  const [editMetadata, setEditMetadataState] = useState('{}')
+  const [editMetadataValidationError, setEditMetadataValidationError] = useState('')
 
   const filteredEntries = useMemo(
     () => filterEntries(entries, queryFilter, jiraFilter),
@@ -109,18 +118,58 @@ export function useContextManager(): UseContextManagerResult {
     }
   }
 
+  function parseJsonSyntaxError(error: unknown): string {
+    const fallback = 'Invalid JSON. Check quotes, commas, and braces.'
+    if (!(error instanceof SyntaxError)) {
+      return fallback
+    }
+
+    const message = error.message
+    const tokenMatch = message.match(/position\s+(\d+)/i)
+    if (tokenMatch) {
+      return `Invalid JSON near character ${tokenMatch[1]}. Check quotes, commas, and braces.`
+    }
+
+    return fallback
+  }
+
   function toMetadataObject(value: string): Record<string, unknown> | undefined {
     const trimmed = value.trim()
     if (!trimmed) {
       return undefined
     }
 
-    const parsed = JSON.parse(trimmed)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(trimmed)
+    } catch (error) {
+      throw new Error(parseJsonSyntaxError(error))
+    }
+
     if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
-      throw new Error('Metadata must be a JSON object')
+      throw new Error('Metadata must be a JSON object, for example {"source": "portal"}.')
     }
 
     return parsed as Record<string, unknown>
+  }
+
+  function validateMetadataInput(value: string): string {
+    try {
+      void toMetadataObject(value)
+      return ''
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Metadata is invalid.'
+    }
+  }
+
+  function handleMetadataInputChange(value: string) {
+    setMetadataInputState(value)
+    setMetadataValidationError(validateMetadataInput(value))
+  }
+
+  function handleEditMetadataChange(value: string) {
+    setEditMetadataState(value)
+    setEditMetadataValidationError(validateMetadataInput(value))
   }
 
   function resolveKey(input: string): string {
@@ -168,10 +217,17 @@ export function useContextManager(): UseContextManagerResult {
   }
 
   async function onCreate() {
+    setCreateError('')
+    setCreateStatusMessage('')
     setError('')
     setStatusMessage('')
 
     try {
+      const metadataError = validateMetadataInput(metadataInput)
+      if (metadataError) {
+        throw new Error(metadataError)
+      }
+
       const ticketIds = parseTicketInput(ticketInput)
       if (!ticketIds.length) {
         throw new Error('Provide at least one Jira ID.')
@@ -185,18 +241,29 @@ export function useContextManager(): UseContextManagerResult {
 
       setTicketInput('')
       setContentInput('')
-      setMetadataInput('{"source":"portal"}')
+      setMetadataInputState('{"source":"portal"}')
+      setMetadataValidationError('')
+      setCreateStatusMessage('Entry created successfully.')
       setStatusMessage('Entry created successfully.')
       await loadKeys()
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'Create failed.')
+      const message = createError instanceof Error ? createError.message : 'Create failed.'
+      setCreateError(message)
+      setError(message)
     }
+  }
+
+  function clearCreateFeedback() {
+    setCreateError('')
+    setCreateStatusMessage('')
   }
 
   function beginEdit(entry: ContextEntry) {
     setEditingId(entry.entry_id)
     setEditContent(entry.content)
-    setEditMetadata(JSON.stringify(entry.metadata ?? {}, null, 2))
+    const nextMetadata = JSON.stringify(entry.metadata ?? {}, null, 2)
+    setEditMetadataState(nextMetadata)
+    setEditMetadataValidationError(validateMetadataInput(nextMetadata))
   }
 
   async function onSaveEdit(entry: ContextEntry) {
@@ -204,6 +271,11 @@ export function useContextManager(): UseContextManagerResult {
     setStatusMessage('')
 
     try {
+      const metadataError = validateMetadataInput(editMetadata)
+      if (metadataError) {
+        throw new Error(metadataError)
+      }
+
       const metadata = toMetadataObject(editMetadata)
       const updated = await updateContextEntry(entry.derived_key, entry.entry_id, {
         content: editContent,
@@ -216,7 +288,8 @@ export function useContextManager(): UseContextManagerResult {
         ),
       )
 
-      setEditingId(null)
+        setEditingId(null)
+        setEditMetadataValidationError('')
       setStatusMessage('Entry updated.')
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Update failed.')
@@ -255,12 +328,15 @@ export function useContextManager(): UseContextManagerResult {
     loading,
     error,
     statusMessage,
+    createError,
+    createStatusMessage,
     ticketInput,
     setTicketInput,
     contentInput,
     setContentInput,
     metadataInput,
-    setMetadataInput,
+    metadataValidationError,
+    setMetadataInput: handleMetadataInputChange,
     queryFilter,
     setQueryFilter,
     jiraFilter,
@@ -274,12 +350,14 @@ export function useContextManager(): UseContextManagerResult {
     editContent,
     setEditContent,
     editMetadata,
-    setEditMetadata,
+    setEditMetadata: handleEditMetadataChange,
+    editMetadataValidationError,
     filteredEntries,
     pageItems,
     totalPages,
     onSearch,
     onCreate,
+    clearCreateFeedback,
     beginEdit,
     onSaveEdit,
     onDelete,

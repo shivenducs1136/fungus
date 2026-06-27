@@ -8,7 +8,10 @@ export function SearchPanel({ manager }: SearchPanelProps) {
   return (
     <section className="panel">
       <div className="panel-header">
-        <h2>Find context</h2>
+        <div>
+          <h2>1. Search Existing Context</h2>
+          <p className="panel-subtitle">Start here to avoid duplicating decisions.</p>
+        </div>
         <div className="mode-toggle" role="tablist" aria-label="Search mode">
           <button
             type="button"
@@ -42,6 +45,12 @@ export function SearchPanel({ manager }: SearchPanelProps) {
                 <option key={key} value={key} />
               ))}
             </datalist>
+            <span className="help-text">Use comma-separated IDs or a full key format.</span>
+            <div className="hint-row" aria-label="Search examples">
+              <span>Examples:</span>
+              <code className="inline-code">ERP-24, ERP-31</code>
+              <code className="inline-code">[ERP-24][ERP-31]</code>
+            </div>
           </label>
         ) : (
           <label>
@@ -51,6 +60,7 @@ export function SearchPanel({ manager }: SearchPanelProps) {
               onChange={(event) => manager.setJiraInput(event.target.value)}
               placeholder="PROJ-101"
             />
+            <span className="help-text">Enter one Jira ticket ID, for example ERP-24.</span>
           </label>
         )}
 
