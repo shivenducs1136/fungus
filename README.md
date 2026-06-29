@@ -138,6 +138,93 @@ Use Docker Compose profiles to run either a production-like runtime image (`rele
 
 Note: Start only one API profile at a time (`release` or `dev`) because both map to port `8000`.
 
+## Running from Docker Hub
+
+The production API image is available on Docker Hub at `gsquare3/fungus`.
+
+### Prerequisites
+
+- Docker installed and running
+- Docker Hub account with access to the private `gsquare3/fungus` repository
+- Environment variables configured (see below)
+
+### Pulling the Image
+
+First, authenticate with Docker Hub:
+
+```bash
+docker login
+```
+
+Then pull the image:
+
+```bash
+docker pull gsquare3/fungus:latest
+```
+
+Or specify a version:
+
+```bash
+docker pull gsquare3/fungus:1.0.0
+```
+
+### Setting Up Environment Variables
+
+Create a `.env` file with the following variables:
+
+```env
+# Database Configuration
+DATABASE_URL=postgresql://postgres:password@db:5432/fungus
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_DB=fungus
+
+# MCP Server
+KNOWLEDGE_SERVER_BASE_URL=http://your-server:8000
+KNOWLEDGE_SERVER_TIMEOUT_SECONDS=15
+
+# Logging
+FUNGUS_LOG_LEVEL=INFO
+```
+
+### Running the Image
+
+**Option 1: Using environment variables directly**
+
+```bash
+docker run -p 8000:8000 \
+  -e DATABASE_URL="postgresql://postgres:password@db:5432/fungus" \
+  -e POSTGRES_USER="postgres" \
+  -e POSTGRES_PASSWORD="your_password" \
+  -e POSTGRES_DB="fungus" \
+  -e KNOWLEDGE_SERVER_BASE_URL="http://your-server:8000" \
+  gsquare3/fungus:latest
+```
+
+**Option 2: Using an environment file**
+
+```bash
+docker run -p 8000:8000 --env-file .env gsquare3/fungus:latest
+```
+
+### Accessing the Application
+
+Once the container is running:
+
+- **API Base URL:** `http://localhost:8000`
+- **API Swagger Docs:** `http://localhost:8000/docs`
+- **API ReDoc:** `http://localhost:8000/redoc`
+
+### Giving Others Access
+
+To grant another user access to the private image:
+
+1. Go to [Docker Hub](https://hub.docker.com)
+2. Navigate to your `fungus` repository
+3. Click on "Collaborators"
+4. Add their Docker Hub username
+5. They will receive an invite and can then pull the image
+
 ## MCP Server (stdio)
 
 This repository includes an MCP server layer that exposes two tools over `stdio` using the official Python SDK.
