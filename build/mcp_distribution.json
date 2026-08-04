@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "fungus-knowledge": {
+      "type": "stdio",
+      "command": "C:\\path\\to\\fungus-mcp.exe",
+      "args": [],
+      "env": {
+        "KNOWLEDGE_SERVER_BASE_URL": "http://135.235.194.98:8000",
+        "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+      }
+    }
+  },
+  "inputs": []
+}

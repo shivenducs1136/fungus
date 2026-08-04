@@ -259,6 +259,54 @@ For retrieval:
 3. MCP tool extracts JIRA IDs from git history and fetches matching context.
 4. Tool returns both structured payload and a concatenated summary for chat display.
 
+### Distributing as a Standalone Executable
+
+The MCP server can be packaged into a single `fungus-mcp.exe` so users need no Python installation.
+
+**Build (Windows, from repo root):**
+
+```powershell
+.\build\build_exe.ps1
+```
+
+This installs PyInstaller into the active venv if needed and produces `dist\fungus-mcp.exe` (~20 MB).
+
+**Ship to users:**
+
+| File | Purpose |
+|---|---|
+| `dist\fungus-mcp.exe` | Self-contained MCP server |
+| `build\mcp_distribution.json` | Drop-in `mcp.json` — update `command` path, rename to `mcp.json` |
+
+**User setup (no Python required):**
+
+1. Place `fungus-mcp.exe` anywhere (e.g. `C:\Tools\fungus-mcp.exe`).
+2. Create `mcp.json` (location depends on client — see below) with:
+
+```json
+{
+  "servers": {
+    "fungus-knowledge": {
+      "type": "stdio",
+      "command": "C:\\Tools\\fungus-mcp.exe",
+      "args": [],
+      "env": {
+        "KNOWLEDGE_SERVER_BASE_URL": "http://<your-server>:8000",
+        "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+      }
+    }
+  }
+}
+```
+
+The exe is launched automatically by the MCP client (VS Code / Cursor / Claude Desktop) — users never run it directly.
+
+**Clean rebuild:**
+
+```powershell
+.\build\build_exe.ps1 -Clean
+```
+
 ### Run Locally
 
 1. Start the FastAPI Knowledge Server (for example with Docker or uvicorn).
@@ -338,6 +386,23 @@ python -m app.mcp.server
 
 Add to Claude's MCP config file (for example `claude_desktop_config.json`):
 
+**Using the standalone exe (recommended for distribution):**
+```json
+{
+   "mcpServers": {
+      "fungus-knowledge": {
+         "command": "C:\\Tools\\fungus-mcp.exe",
+         "args": [],
+         "env": {
+            "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
+            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+         }
+      }
+   }
+}
+```
+
+**Using Python directly (development):**
 ```json
 {
    "mcpServers": {
@@ -359,6 +424,23 @@ Add to Claude's MCP config file (for example `claude_desktop_config.json`):
 
 Add to Cursor MCP config (same schema):
 
+**Using the standalone exe (recommended for distribution):**
+```json
+{
+   "mcpServers": {
+      "fungus-knowledge": {
+         "command": "C:\\Tools\\fungus-mcp.exe",
+         "args": [],
+         "env": {
+            "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
+            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+         }
+      }
+   }
+}
+```
+
+**Using Python directly (development):**
 ```json
 {
    "mcpServers": {

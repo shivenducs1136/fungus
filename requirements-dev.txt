@@ -5,3 +5,6 @@ pytest==9.1.0
 httpx2==2.4.0
 httpcore2==2.4.0
 truststore==0.10.4
+
+# Exe build
+pyinstaller==6.21.0
