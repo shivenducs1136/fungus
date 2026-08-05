@@ -10,8 +10,7 @@ export function ResultsPanel({ manager }: ResultsPanelProps) {
     <section className="panel">
       <div className="panel-header">
         <div>
-          <h2>3. Review and Refine</h2>
-          <p className="panel-subtitle">Filter, inspect metadata, and update entries safely.</p>
+          <h2>Search Results</h2>
         </div>
         <p className="results-count">{manager.filteredEntries.length} matching entries</p>
       </div>
@@ -67,7 +66,7 @@ export function ResultsPanel({ manager }: ResultsPanelProps) {
       <div className="pager">
         <button
           type="button"
-          className="ghost"
+          className="btn-secondary"
           onClick={() => manager.setPage((current) => Math.max(1, current - 1))}
           disabled={manager.page <= 1}
         >
@@ -78,7 +77,7 @@ export function ResultsPanel({ manager }: ResultsPanelProps) {
         </p>
         <button
           type="button"
-          className="ghost"
+          className="btn-secondary"
           onClick={() => manager.setPage((current) => Math.min(manager.totalPages, current + 1))}
           disabled={manager.page >= manager.totalPages}
         >
@@ -193,7 +192,7 @@ function EntryCard({ entry, manager }: EntryCardProps) {
           <p className="entry-id">ID: {entry.entry_id}</p>
         </div>
         <div className="entry-actions">
-          <button type="button" className="ghost" onClick={() => manager.beginEdit(entry)}>
+          <button type="button" className="btn-secondary" onClick={() => manager.beginEdit(entry)}>
             Edit
           </button>
           <button type="button" className="danger" onClick={() => void manager.onDelete(entry)}>
@@ -234,7 +233,7 @@ function EntryCard({ entry, manager }: EntryCardProps) {
             <button type="button" onClick={() => void manager.onSaveEdit(entry)} disabled={saveDisabled}>
               {saveDisabled ? 'Fix JSON to save' : 'Save'}
             </button>
-            <button type="button" className="ghost" onClick={() => manager.setEditingId(null)}>
+            <button type="button" className="btn-secondary" onClick={() => manager.setEditingId(null)}>
               Cancel
             </button>
           </div>

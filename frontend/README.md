@@ -26,11 +26,19 @@ npm install
 npm run dev
 ```
 
-## Build
+## Build & Release (with Sitemap)
+
+To build the static assets for production:
 
 ```bash
 npm run build
 ```
+
+This will run TypeScript type checking (`tsc -b`) and then build the application with Vite into the `dist/` folder.
+
+**Sitemap Generation**: During the build process, `vite-plugin-sitemap` will automatically generate `sitemap.xml` and `robots.txt` in the `dist/` output directory. This ensures the landing page, docs, and dashboard routes are easily indexable by search engines.
+
+*Note: Ensure the `hostname` in `vite.config.ts` is updated to your production domain for the sitemap to be fully valid.*
 
 ## Test scripts
 

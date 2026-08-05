@@ -113,8 +113,8 @@ export function useContextManager(): UseContextManagerResult {
     try {
       const response = await fetchKeys()
       setKeys(response.keys)
-    } catch {
-      setError('Unable to load known Jira combinations.')
+    } catch (err) {
+      console.warn('Unable to load known Jira combinations.', err)
     }
   }
 

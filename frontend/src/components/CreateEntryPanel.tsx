@@ -26,16 +26,31 @@ export function CreateEntryPanel({ manager }: CreateEntryPanelProps) {
     void manager.onCreate()
   }
 
+  function fillCreateTemplate() {
+    manager.setTicketInput('ERP-24')
+    manager.setContentInput(
+      'Problem: Needed deterministic retrieval of architecture context.\nDecision: Use Jira-key-based context storage and retrieval.\nConstraints: Keep logic simple and avoid embeddings.',
+    )
+    manager.setMetadataInput('{"source":"portal","author":"team"}')
+  }
+
   const createDisabled = manager.loading || Boolean(manager.metadataValidationError)
 
   return (
-    <section className="panel">
-      <div className="panel-header">
+    <div className="panel" style={{ maxWidth: '700px', margin: '0 auto', width: '100%' }}>
+      <div className="panel-header" style={{ marginBottom: '10px' }}>
         <div>
-          <h2>2. Create Context Entry</h2>
+          <h2 style={{ fontFamily: "'Space Mono', monospace", fontSize: '14px', textTransform: 'uppercase', color: 'var(--rust)', borderBottom: 'none' }}>Create Context Entry</h2>
           <p className="panel-subtitle">Document your reasoning so future decisions are easier.</p>
         </div>
       </div>
+      
+      <div className="quick-fill-container">
+        <button type="button" className="tab-btn" style={{ padding: '6px 12px', fontSize: '11px', borderBottom: 'none' }} onClick={fillCreateTemplate}>
+          Sample Fill Template
+        </button>
+      </div>
+
       <form className="create-form" onSubmit={handleSubmit}>
         <label>
           Jira IDs
@@ -58,7 +73,7 @@ export function CreateEntryPanel({ manager }: CreateEntryPanelProps) {
             required
           />
           <div className="hint-row" aria-label="Suggested writing structure">
-            <span>Include:</span>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', textTransform: 'uppercase' }}>Include:</span>
             <code className="inline-code">Problem</code>
             <code className="inline-code">Decision</code>
             <code className="inline-code">Impact</code>
@@ -86,8 +101,8 @@ export function CreateEntryPanel({ manager }: CreateEntryPanelProps) {
           )}
         </label>
 
-        <button type="submit" disabled={createDisabled}>
-          {createDisabled ? 'Fix metadata JSON to continue' : 'Create'}
+        <button type="submit" disabled={createDisabled} style={{ width: '100%', marginTop: '10px' }}>
+          {createDisabled ? 'Fix metadata JSON to continue' : 'Create Entry'}
         </button>
 
         {manager.createError ? (
@@ -102,6 +117,6 @@ export function CreateEntryPanel({ manager }: CreateEntryPanelProps) {
           </p>
         ) : null}
       </form>
-    </section>
+    </div>
   )
 }
