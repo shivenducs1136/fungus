@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>fungus — field notes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Source+Serif+4:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E9E4D6;
+    --paper-2:#E1DBC9;
+    --paper-3:#D8D1BE;
+    --ink:#26221A;
+    --ink-soft:#5B5648;
+    --lichen:#5C6B4F;
+    --rust:#9C5B3C;
+    --gold:#B8934A;
+    --line: rgba(38,34,26,0.16);
+    --border-strong: rgba(38,34,26,0.3);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Serif 4', serif;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(38,34,26,0.03), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(38,34,26,0.025), transparent 45%);
+    position: relative;
+  }
+  #spores-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:0 32px;}
+  .mono{font-family:'Space Mono', monospace;}
+
+  header{
+    border-bottom:1.5px solid var(--ink);
+    padding:22px 0;
+  }
+  .head-row{display:flex; justify-content:space-between; align-items:baseline;}
+  .logo{
+    font-family:'Newsreader', serif; font-style:italic; font-weight:500; font-size:22px;
+  }
+  nav{display:flex; gap:26px; font-family:'Space Mono',monospace; font-size:11.5px; letter-spacing:0.03em; text-transform:uppercase; color:var(--ink-soft);}
+  nav a{color:inherit; text-decoration:none;}
+  nav a:hover{color:var(--rust);}
+
+  .plate-num{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft);
+    letter-spacing:0.08em; text-align:center; padding:10px 0; border-bottom:1px solid var(--line);
+  }
+
+  .hero{padding:64px 0 40px;}
+  .hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:60px; align-items:center;}
+  .eyebrow{
+    font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--rust); margin-bottom:20px;
+  }
+  h1{
+    font-family:'Newsreader', serif; font-weight:500; font-size:clamp(32px,4.4vw,50px);
+    line-height:1.18; margin-bottom:22px; letter-spacing:-0.01em;
+  }
+  h1 i{ color:var(--lichen); font-style:italic; }
+  .sub{
+    font-size:17px; line-height:1.7; color:var(--ink-soft); max-width:460px; margin-bottom:8px;
+  }
+  .latin{
+    font-family:'Newsreader', serif; font-style:italic; font-size:14px; color:var(--ink-soft); margin-bottom:30px;
+  }
+
+  .specimen{
+    border:1px solid var(--ink); padding:20px; background:var(--paper-2); position:relative;
+  }
+  .specimen-label{
+    position:absolute; top:-1px; left:20px; background:var(--paper-2); padding:0 8px;
+    font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    transform:translateY(-50%); color:var(--ink-soft);
+  }
+  .specimen svg{display:block; width:100%; height:auto;}
+  .specimen-caption{
+    display:flex; justify-content:space-between; margin-top:14px; padding-top:12px;
+    border-top:1px dashed var(--line); font-family:'Space Mono', monospace; font-size:10px; color:var(--ink-soft);
+  }
+
+  .collect{padding:20px 0 90px;}
+  .label-box{
+    border:1.5px solid var(--ink); max-width:740px; padding:0; background:var(--paper-2); margin-bottom: 20px;
+  }
+  .label-head{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 20px; border-bottom:1px solid var(--ink);
+    font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .label-body{padding:20px 22px; font-family:'Space Mono', monospace; font-size:13px; line-height:1.8; overflow-x: auto;}
+  .p1{color:var(--ink-soft);} .c1{color:var(--ink); font-weight:700;}
+  .r1{color:var(--lichen); font-style: italic;}
+  .label-foot{
+    display:flex; justify-content:space-between; padding:12px 22px; border-top:1px dashed var(--line);
+    font-family:'Space Mono', monospace; font-size:10.5px; color:var(--ink-soft);
+  }
+
+  .key{padding:80px 0; border-top:1.5px solid var(--ink);}
+  .key-head{max-width:600px; margin-bottom:56px;}
+  .section-label{font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--rust); margin-bottom:16px;}
+  h2{font-family:'Newsreader', serif; font-weight:500; font-size:29px; line-height:1.32;}
+
+  .keylist{display:grid; grid-template-columns:1fr 1fr; gap:40px 60px; margin-bottom: 80px;}
+  .keyitem{
+    display:flex; gap:16px; padding:24px 0; border-bottom:1px solid var(--line);
+  }
+  .keyitem .letter{
+    font-family:'Newsreader', serif; font-style:italic; font-size:22px; color:var(--gold); flex-shrink:0; width:26px;
+  }
+  .keyitem h3{font-size:16px; font-weight:600; margin-bottom:6px; font-family:'Source Serif 4', serif;}
+  .keyitem p{font-size:13.5px; color:var(--ink-soft); line-height:1.6;}
+
+  /* Example UI inside the key section */
+  .example-ui-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .journal-container {
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    box-shadow: 4px 4px 0px rgba(38,34,26,0.05);
+    margin: 0 auto;
+    max-width: 800px;
+  }
+
+  .entry-user {
+    background: var(--paper-2);
+    border: 1px solid var(--border-strong);
+    padding: 24px 30px;
+    position: relative;
+    max-width: 85%;
+    align-self: flex-end;
+  }
+  .entry-user::before {
+    content: "INQUIRY LOG —";
+    position: absolute;
+    top: -9px;
+    right: 20px;
+    background: var(--paper-2);
+    padding: 0 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--rust);
+    letter-spacing: 0.1em;
+  }
+  .entry-user .query-text {
+    font-family: 'Newsreader', serif;
+    font-size: 20px;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .entry-tool {
+    padding: 0 40px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .entry-tool::before {
+    content: "";
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    border-left: 2px dashed var(--lichen);
+  }
+  .tool-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 16px;
+  }
+  .tool-status::before {
+    content: "•";
+    color: var(--lichen);
+    font-style: normal;
+    font-size: 20px;
+    position: absolute;
+    left: 15px;
+  }
+  .tool-box {
+    background: var(--paper-3);
+    border: 1px solid var(--ink);
+    padding: 12px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 5px;
+    max-width: 90%;
+  }
+  .tool-box .tool-name { font-weight: bold; color: var(--rust); }
+  .tool-box .tool-out { color: var(--ink-soft); border-top: 1px dashed var(--line); padding-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .entry-agent {
+    border-top: 1.5px solid var(--ink);
+    padding: 30px 0 0;
+    position: relative;
+  }
+  .agent-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .agent-label::before { content: "•"; color: var(--lichen); font-size: 18px; }
+  .agent-content h3 { font-family: 'Source Serif 4', serif; font-size: 17px; font-weight: 700; margin: 20px 0 8px; color: var(--ink); }
+  .agent-content h3:first-child { margin-top: 0; }
+  .agent-content p { font-size: 15px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 15px; }
+  .agent-content ul { list-style: none; margin-bottom: 15px; padding-left: 20px; }
+  .agent-content li { font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 6px; position: relative; }
+  .agent-content li::before { content: "—"; position: absolute; left: -20px; color: var(--rust); }
+  .agent-content li strong { color: var(--ink); font-weight: 600; }
+  .agent-content code { font-family: 'Space Mono', monospace; font-size: 13px; background: var(--paper-2); padding: 2px 4px; border: 1px solid var(--line); color: var(--ink); }
+  .commit-ref { display: inline-block; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--rust); border-bottom: 1px dotted var(--rust); text-decoration: none; margin-left: 6px; }
+
+  .press{padding:80px 0 100px; border-top:1.5px solid var(--ink); text-align:center;}
+  .press h2{text-align:center; margin:0 auto 14px;}
+  .press p{color:var(--ink-soft); max-width:440px; margin:0 auto 36px; font-size:15px;}
+  .btn { color:var(--ink); font-family:'Space Mono',monospace; font-size:15px; border: 1px solid var(--ink); padding: 10px 20px; text-decoration: none; display: inline-block; transition: background 0.2s; }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+
+  .code-copy-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--paper-3);
+    border: 1px solid var(--ink);
+    padding: 8px 12px;
+    margin-top: 5px;
+  }
+  .code-content {
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    margin-right: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+  .copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    padding: 4px;
+  }
+  .copy-btn:hover {
+    color: var(--ink);
+  }
+
+  .specimen svg text {
+    transition: font-size 0.2s ease, fill 0.2s ease;
+    cursor: default;
+  }
+  .specimen svg text:hover {
+    font-size: 12px;
+    fill: var(--ink);
+  }
+
+  footer{border-top:1.5px solid var(--ink); padding:26px 0;}
+  .foot-row{display:flex; justify-content:space-between; font-family:'Space Mono', monospace; font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.05em;}
+
+  @media (max-width:800px){
+    .hero-grid{grid-template-columns:1fr; gap:40px;}
+    .keylist{grid-template-columns:1fr;}
+    nav{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="spores-canvas"></canvas>
+
+<header>
+  <div class="wrap head-row">
+    <div class="logo">fungus</div>
+    <nav>
+      <a href="#key">field key</a>
+      <a href="#collect">install</a>
+      <a href="docs.html">docs</a>
+    </nav>
+  </div>
+</header>
+<div class="plate-num mono">PLATE VII — CONTEXT-BEARING SPECIES, DOMESTICATED FOR SOFTWARE REPOSITORIES</div>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">MCP server, field edition</div>
+      <h1>Legacy code has a memory.<br>It's just <i>underground</i>.</h1>
+      <p class="sub">Fungus collects the context your agents already worked out — the why behind the weird function — and roots it to the code itself via Git commits, so it resurfaces exactly when it's needed again.</p>
+      <p class="latin">Context perennis, sub cortice repositum.</p>
+    </div>
+
+    <div class="specimen">
+      <span class="specimen-label mono">fig. 1 — mycelial attachment</span>
+      <svg viewBox="0 0 400 380">
+        <path d="M120 150 C 120 90, 160 55, 200 55 C 240 55, 280 90, 280 150 Z" fill="none" stroke="#26221A" stroke-width="1.6"/>
+        <path d="M130 150 C130 100, 165 68, 200 68 C 235 68, 270 100, 270 150" fill="none" stroke="#9C5B3C" stroke-width="1" opacity="0.5"/>
+        <g stroke="#26221A" stroke-width="0.8" opacity="0.55">
+          <line x1="140" y1="150" x2="145" y2="130"/>
+          <line x1="155" y1="150" x2="162" y2="120"/>
+          <line x1="172" y1="150" x2="178" y2="112"/>
+          <line x1="190" y1="150" x2="192" y2="108"/>
+          <line x1="208" y1="150" x2="208" y2="108"/>
+          <line x1="226" y1="150" x2="222" y2="112"/>
+          <line x1="244" y1="150" x2="238" y2="120"/>
+          <line x1="260" y1="150" x2="255" y2="130"/>
+        </g>
+        <rect x="188" y="150" width="24" height="70" fill="none" stroke="#26221A" stroke-width="1.6"/>
+        <g fill="none" stroke="#5C6B4F" stroke-width="1.2">
+          <path d="M195 220 C 170 240, 150 250, 110 265"/>
+          <path d="M200 220 C 195 250, 195 270, 190 310"/>
+          <path d="M206 220 C 235 245, 250 255, 290 270"/>
+          <path d="M110 265 C 80 280, 60 300, 40 330"/>
+          <path d="M110 265 C 100 290, 90 305, 95 335"/>
+          <path d="M290 270 C 310 290, 330 300, 355 320"/>
+          <path d="M190 310 C 175 330, 165 340, 150 360"/>
+        </g>
+        <circle cx="110" cy="265" r="3" fill="#B8934A"/>
+        <circle cx="290" cy="270" r="3" fill="#B8934A"/>
+        <circle cx="190" cy="310" r="3" fill="#B8934A"/>
+        <circle cx="40" cy="330" r="2.4" fill="#26221A"/>
+        <circle cx="95" cy="335" r="2.4" fill="#26221A"/>
+        <circle cx="355" cy="320" r="2.4" fill="#26221A"/>
+        <circle cx="150" cy="360" r="2.4" fill="#26221A"/>
+        <text x="10" y="352" class="mono" font-size="8.5" fill="#5B5648">auth.py</text>
+        <text x="60" y="352" class="mono" font-size="8.5" fill="#5B5648">migrate_v2</text>
+        <text x="300" y="336" class="mono" font-size="8.5" fill="#5B5648">worker.rb</text>
+        <text x="118" y="376" class="mono" font-size="8.5" fill="#5B5648">test_suite</text>
+      </svg>
+      <div class="specimen-caption">
+        <span>a. fruiting body — the surfaced answer</span>
+        <span>b. rhizomorph — the trace to the commit hash</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="collect" id="collect">
+  <div class="wrap">
+    <div class="label-box">
+      <div class="label-head">
+        <span>specimen no. 001 — client installation (windows release)</span>
+        <span>coll. local-machine/</span>
+      </div>
+      <div class="label-body">
+        <div class="r1" style="margin-bottom:8px;"># Paste in PowerShell to download the executable and configure mcp.json in the current folder</div>
+        <div class="code-copy-wrapper">
+          <div class="code-content c1">iwr https://github.com/shivenducs1136/fungus/releases/download/v1.0.0/fungus-mcp.exe -OutFile fungus-mcp.exe; $j = (iwr https://github.com/shivenducs1136/fungus/releases/download/v1.0.0/mcp_distribution.json).Content | ConvertFrom-Json; $j.servers.'fungus-knowledge'.command = "$PWD\fungus-mcp.exe"; $j | ConvertTo-Json -Depth 5 | Out-File mcp.json -Encoding utf8</div>
+          <button class="copy-btn" title="Copy to clipboard" onclick="copyToClipboard(this)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+        </div>
+      </div>
+      <div class="label-foot">
+        <span>Downloads the v1.0.0 self-contained MCP server (~20 MB)</span>
+        <span>Generates a ready-to-use mcp.json</span>
+      </div>
+    </div>
+    
+    <div class="label-box" style="margin-bottom:0;">
+      <div class="label-head">
+        <span>specimen no. 002 — building from source</span>
+        <span>coll. local-repo/</span>
+      </div>
+      <div class="label-body">
+        <div class="r1" style="margin-bottom:8px;"># Clone the repository and build the executable locally</div>
+        <div><span class="p1">PS ></span> <span class="c1">git clone https://github.com/shivenducs1136/fungus.git</span></div>
+        <div><span class="p1">PS ></span> <span class="c1">cd fungus</span></div>
+        <div><span class="p1">PS ></span> <span class="c1">.\build\build_exe.ps1</span></div>
+      </div>
+      <div class="label-foot">
+        <span>Installs PyInstaller into the active venv</span>
+        <span>Produces dist\fungus-mcp.exe</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="key" id="key">
+  <div class="wrap">
+    <div class="key-head">
+      <div class="section-label">Field key</div>
+      <h2>What gets pressed into the record, and where it resurfaces.</h2>
+    </div>
+    <div class="keylist">
+      <div class="keyitem">
+        <div class="letter">a</div>
+        <div>
+          <h3>Working notes, kept</h3>
+          <p>Whatever an agent or engineer figures out mid-session — the reason for the odd branch, the migration that never got documented — gets written to the file it concerns, not lost to a closed tab.</p>
+        </div>
+      </div>
+      <div class="keyitem">
+        <div class="letter">b</div>
+        <div>
+          <h3>Rooted to Git History</h3>
+          <p>Context spreads along real dependencies. By linking the deep knowledge document to a context hash (ctx-xxxx) in the Git Commit Message, the information is bound to the exact point in time the codebase changed.</p>
+        </div>
+      </div>
+      <div class="keyitem">
+        <div class="letter">c</div>
+        <div>
+          <h3>Any agent can read it</h3>
+          <p>Served over MCP. Claude, Cursor, or your own scripts all pull from the same accumulated record — nothing re-explained twice. No vector databases, embeddings, or RAG needed. O(1) retrieval.</p>
+        </div>
+      </div>
+      <div class="keyitem">
+        <div class="letter">d</div>
+        <div>
+          <h3>The codebase speaks for itself</h3>
+          <p>When you ask "Why is this implemented this way?", Fungus performs a git blame, retrieves the commit, extracts the key, and serves the rationale perfectly.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- The Query UI Example -->
+    <div class="example-ui-title">fig. 2 — extracting context from a commit</div>
+    <div class="journal-container">
+      <div style="background: var(--paper-2); border: 1px dashed var(--line); padding: 15px 20px; font-size: 13px; color: var(--ink-soft); font-family: 'Source Serif 4', serif;">
+        <span style="font-family:'Space Mono',monospace; font-size:10px; text-transform:uppercase; color:var(--lichen); display:block; margin-bottom:8px;">Context from architecture knowledge:</span>
+        This calculator was created by Shivendu (TPR-111/TPR-121) as a sample/POC app intended for use in Tally Prime's Calculator Panel. It supports the standard operators plus two custom operators: tilda ( ~ ) for dual negation and power ( ^ ).<br><br>
+        The function is simple and straightforward—it's a dispatcher that routes to the appropriate operation based on the operator symbol.
+      </div>
+
+      <!-- User Query -->
+      <div class="entry-user">
+        <div class="query-text">why these two custom operator impl?</div>
+      </div>
+
+      <!-- Tool Execution -->
+      <div class="entry-tool">
+        <div class="tool-status">Let me check the commit history and knowledge base for context on why these operators were added.</div>
+        <div class="tool-box">
+          <div><span class="tool-name">Fungus-knowledge</span> [retrieve_knowledge]</div>
+          <div class="tool-out">OUT {"message":"**Knowledge Summary for TPR-3001**\nEntries included: 1\n**Combined Summary**\nProblem: Exponential UI calculations..."}</div>
+        </div>
+      </div>
+
+      <!-- Agent Response -->
+      <div class="entry-agent">
+        <div class="agent-label">Findings Documented</div>
+        <div class="agent-content">
+          <p>Here's why these operators were added:</p>
+          
+          <h3>1. Tilda ( ~ ) operator <span class="commit-ref">ref: TPR-2093</span></h3>
+          <ul>
+            <li><strong>Added by:</strong> Deva Harsha BT for the Custom PDF Engine.</li>
+            <li><strong>Purpose:</strong> String position calculation — calculates position accurately for each word in a string.</li>
+            <li><strong>Implementation:</strong> <code>a*-1 + b*-1</code> negates both operands and sums them.</li>
+          </ul>
+          
+          <h3>2. Power ( ^ ) operator <span class="commit-ref">ref: TPR-3001</span></h3>
+          <ul>
+            <li><strong>Added by:</strong> Yashas and Yashwanth for the UI team.</li>
+            <li><strong>Purpose:</strong> Exponential zone calculations in the UI.</li>
+            <li><strong>Implementation:</strong> <code>a ** b</code> (standard Python exponentiation).</li>
+          </ul>
+          
+          <p>Both were domain-specific requirements: the tilda operator supports the PDF engine's text positioning logic. They're not general-purpose calculator features—they're specialized for Tally Prime's specific use cases.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="press">
+  <div class="wrap">
+    <h2>Stop letting good answers evaporate.</h2>
+    <p>Read the documentation to learn how to plant the spores in your infrastructure.</p>
+    <a href="docs.html" class="btn">View Documentation</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-row">
+    <span>fungus — field edition</span>
+    <span>an MCP server for legacy code</span>
+  </div>
+</footer>
+
+<script>
+  // Spore particle effect
+  const canvas = document.getElementById('spores-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  let width, height;
+  let particles = [];
+  
+  function initParticles() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    particles = [];
+    const particleCount = Math.floor((width * height) / 1800); // Slightly more dense
+    
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: Math.random() * 1.5 + 0.5,
+        vx: Math.random() * 0.25 + 0.05, // Drift right slowly
+        vy: -(Math.random() * 0.25 + 0.05), // Drift up slowly
+        opacity: Math.random() * 0.25 + 0.05
+      });
+    }
+  }
+  
+  function animateParticles() {
+    ctx.clearRect(0, 0, width, height);
+    
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      
+      // Wrap around smoothly
+      if (p.x > width + 5) p.x = -5;
+      if (p.y < -5) p.y = height + 5;
+      
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(38, 34, 26, ${p.opacity})`; // --ink color with opacity
+      ctx.fill();
+    });
+    
+    requestAnimationFrame(animateParticles);
+  }
+  
+  window.addEventListener('resize', initParticles);
+  initParticles();
+  animateParticles();
+
+  // Copy to clipboard function
+  function copyToClipboard(btn) {
+    const codeElement = btn.previousElementSibling;
+    const textToCopy = codeElement.textContent;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const originalSVG = btn.innerHTML;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      btn.style.color = 'var(--lichen)';
+      setTimeout(() => {
+        btn.innerHTML = originalSVG;
+        btn.style.color = '';
+      }, 2000);
+    });
+  }
+</script>
+
+</body>
+</html>

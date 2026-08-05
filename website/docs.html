@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>fungus — documentation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Source+Serif+4:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E9E4D6;
+    --paper-2:#E1DBC9;
+    --ink:#26221A;
+    --ink-soft:#5B5648;
+    --lichen:#5C6B4F;
+    --rust:#9C5B3C;
+    --gold:#B8934A;
+    --line: rgba(38,34,26,0.16);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Serif 4', serif;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(38,34,26,0.03), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(38,34,26,0.025), transparent 45%);
+  }
+  .wrap{max-width:1140px; margin:0 auto; padding:0 32px;}
+  .mono{font-family:'Space Mono', monospace;}
+
+  header{
+    border-bottom:1.5px solid var(--ink);
+    padding:22px 0;
+  }
+  .head-row{display:flex; justify-content:space-between; align-items:baseline;}
+  .logo{
+    font-family:'Newsreader', serif; font-style:italic; font-weight:500; font-size:22px;
+  }
+  nav{display:flex; gap:26px; font-family:'Space Mono',monospace; font-size:11.5px; letter-spacing:0.03em; text-transform:uppercase; color:var(--ink-soft);}
+  nav a{color:inherit; text-decoration:none;}
+  nav a:hover{color:var(--rust);}
+
+  .plate-num{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft);
+    letter-spacing:0.08em; text-align:center; padding:10px 0; border-bottom:1px solid var(--line);
+  }
+
+  .docs-container {
+    display: flex;
+    gap: 60px;
+    padding: 60px 0 100px;
+  }
+
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--line);
+    padding-right: 30px;
+    position: sticky;
+    top: 60px;
+    align-self: flex-start;
+  }
+  
+  .sidebar-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 24px;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sidebar-nav a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 15px;
+    transition: color 0.2s;
+  }
+
+  .sidebar-nav a:hover, .sidebar-nav a.active {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  
+  .sidebar-nav a.active::before {
+    content: "→ ";
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--lichen);
+  }
+
+  .main-content {
+    flex-grow: 1;
+    max-width: 720px;
+  }
+
+  h1 {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 42px;
+    line-height: 1.18;
+    margin-bottom: 22px;
+    letter-spacing: -0.01em;
+  }
+  
+  h2 {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 28px;
+    margin: 40px 0 20px;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 10px;
+  }
+  
+  h3 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 20px;
+    margin: 30px 0 15px;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    margin-bottom: 20px;
+  }
+
+  code {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    background: var(--paper-2);
+    padding: 2px 6px;
+    border: 1px solid var(--line);
+    word-break: break-word;
+  }
+
+  pre {
+    background: var(--paper-2);
+    border: 1px solid var(--ink);
+    padding: 20px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13.5px;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  
+  .note {
+    background: var(--paper-2);
+    border-left: 3px solid var(--lichen);
+    padding: 16px 20px;
+    margin: 24px 0;
+    font-style: italic;
+  }
+
+  .code-copy-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--paper-2);
+    border: 1px solid var(--ink);
+    padding: 10px 14px;
+    margin: 20px 0;
+  }
+  .code-content {
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    margin-right: 16px;
+    font-family: 'Space Mono', monospace;
+  }
+  .copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover {
+    color: var(--ink);
+  }
+
+  footer{border-top:1.5px solid var(--ink); padding:26px 0;}
+  .foot-row{display:flex; justify-content:space-between; font-family:'Space Mono', monospace; font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.05em;}
+
+  @media (max-width:800px){
+    .docs-container { flex-direction: column; }
+    .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--line); padding-bottom: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap head-row">
+    <div class="logo">fungus</div>
+    <nav>
+      <a href="index.html#key">field key</a>
+      <a href="index.html#collect">install</a>
+      <a href="docs.html">docs</a>
+    </nav>
+  </div>
+</header>
+<div class="plate-num mono">MANUAL OF BOTANICAL ENGINEERING — VOL. I</div>
+
+<div class="wrap docs-container">
+  <aside class="sidebar">
+    <div class="sidebar-title">Index</div>
+    <nav class="sidebar-nav">
+      <a href="#getting-started" class="active">Getting Started</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#installation">Installation</a>
+      <a href="#usage">Usage & MCP</a>
+    </nav>
+  </aside>
+  
+  <main class="main-content">
+    <h1 id="getting-started">Getting Started</h1>
+    <p>AI-assisted software development generates valuable architectural reasoning during implementation. The final code captures what was built, but not why a solution was chosen, the constraints discovered, or the tradeoffs considered.</p>
+    <p>Fungus preserves that reasoning and links it directly to source code through Git history, ensuring it remains accessible to future developers and AI agents.</p>
+    
+    <div class="note">
+      <p>The goal is to preserve implementation rationale so future developers and future AI agents can make informed decisions without repeating past investigations.</p>
+    </div>
+    
+    <h2 id="architecture">Architecture</h2>
+    <p>The Fungus ecosystem consists of two primary organisms:</p>
+    <ol style="margin-left: 20px; margin-bottom: 20px; color: var(--ink-soft); line-height: 1.7;">
+      <li><strong>Knowledge Server:</strong> A robust FastAPI-based service providing knowledge storage, context retrieval, hash generation, and persistence.</li>
+      <li><strong>MCP Server:</strong> A lightweight client-side standalone executable that handles Git operations and interacts with the Knowledge Server to save and retrieve context over stdio.</li>
+    </ol>
+    
+    <h2 id="installation">Installation</h2>
+    
+    <p>The MCP server is packaged as a single <code>fungus-mcp.exe</code> file (~20 MB) so users need no Python installation.</p>
+    
+    <h3>1. Quick Install (Windows Release)</h3>
+    <p>Open PowerShell in your preferred tooling directory and run this one-liner to download the executable and construct the <code>mcp.json</code> configuration file automatically:</p>
+    <div class="code-copy-wrapper">
+      <div class="code-content">iwr https://github.com/shivenducs1136/fungus/releases/download/v1.0.0/fungus-mcp.exe -OutFile fungus-mcp.exe; $j = (iwr https://github.com/shivenducs1136/fungus/releases/download/v1.0.0/mcp_distribution.json).Content | ConvertFrom-Json; $j.servers.'fungus-knowledge'.command = "$PWD\fungus-mcp.exe"; $j | ConvertTo-Json -Depth 5 | Out-File mcp.json -Encoding utf8</div>
+      <button class="copy-btn" title="Copy to clipboard" onclick="copyToClipboard(this)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      </button>
+    </div>
+    <p>This command dynamically injects the absolute path of the downloaded executable into your <code>mcp.json</code> file.</p>
+    
+    <h3>2. Building From Source</h3>
+    <p>If you prefer to build the executable yourself from the latest source code:</p>
+    <pre><code>git clone https://github.com/shivenducs1136/fungus.git
+cd fungus
+.\build\build_exe.ps1</code></pre>
+    <p>This installs PyInstaller into the active virtual environment and produces <code>dist\fungus-mcp.exe</code>.</p>
+  
+    <h2 id="usage">Usage & MCP Configuration</h2>
+    <p>Once you have the <code>mcp.json</code> file ready, configure your AI agent to use it. For Claude Desktop, simply append the servers block from <code>mcp.json</code> to your <code>claude_desktop_config.json</code>.</p>
+    
+    <p>For Cursor and VS Code, provide the path to your <code>mcp.json</code> or configure it directly in their respective UI settings.</p>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap foot-row">
+    <span>fungus — field edition</span>
+    <span>an MCP server for legacy code</span>
+  </div>
+</footer>
+
+<script>
+  function copyToClipboard(btn) {
+    const codeElement = btn.previousElementSibling;
+    const textToCopy = codeElement.textContent;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const originalSVG = btn.innerHTML;
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      btn.style.color = 'var(--lichen)';
+      setTimeout(() => {
+        btn.innerHTML = originalSVG;
+        btn.style.color = '';
+      }, 2000);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const sections = Array.from(document.querySelectorAll('main h1, main h2, main h3')).filter(el => el.id);
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+    
+    // Smooth scroll for nav links
+    navLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        const targetId = this.getAttribute('href');
+        if (targetId.startsWith('#')) {
+          e.preventDefault();
+          const target = document.querySelector(targetId);
+          if (target) {
+            window.scrollTo({
+              top: target.offsetTop - 40,
+              behavior: 'smooth'
+            });
+          }
+        }
+      });
+    });
+
+    // Update active state on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + entry.target.id) {
+              link.classList.add('active');
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-40px 0px -80% 0px' });
+    
+    sections.forEach(section => observer.observe(section));
+  });
+</script>
+
+</body>
+</html>
