@@ -30,7 +30,7 @@ async def storage_error_handler(request: Request, exc: StorageException) -> JSON
         status_code=500,
         content={
             "error": "STORAGE_ERROR",
-            "message": str(exc),
+            "message": "Storage operation failed.",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )

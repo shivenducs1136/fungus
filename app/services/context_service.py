@@ -84,7 +84,7 @@ class ContextService:
         except SQLAlchemyError as ex:
             db.rollback()
             log.error("create failed - %s", ex)
-            raise StorageException(f"Database error during create: {str(ex)}")
+            raise StorageException("Storage operation failed.")
 
     @classmethod
     def list_keys(cls, db: Session) -> list[str]:
@@ -95,7 +95,7 @@ class ContextService:
             return [r[0] for r in rows]
         except SQLAlchemyError as ex:
             log.error("list_keys failed - %s", ex)
-            raise StorageException(f"Database error during list_keys: {str(ex)}")
+            raise StorageException("Storage operation failed.")
 
     @classmethod
     def get_all(cls, db: Session, key: str) -> list[dict]:
@@ -109,7 +109,7 @@ class ContextService:
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
             log.error("get_all failed - key=%s error=%s", key, ex)
-            raise StorageException(f"Database error during get_all: {str(ex)}")
+            raise StorageException("Storage operation failed.")
 
     @classmethod
     def get_entry(cls, db: Session, key: str, entry_id: str) -> dict:
@@ -126,7 +126,7 @@ class ContextService:
             return cls._to_dict(entry)
         except SQLAlchemyError as ex:
             log.error("get_entry failed - key=%s entry_id=%s error=%s", key, entry_id, ex)
-            raise StorageException(f"Database error during get_entry: {str(ex)}")
+            raise StorageException("Storage operation failed.")
 
     @classmethod
     def get_by_jira(cls, db: Session, jira_id: str) -> list[dict]:
@@ -149,7 +149,7 @@ class ContextService:
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
             log.error("get_by_jira failed - jira_id=%s error=%s", jira_id, ex)
-            raise StorageException(f"Database error during get_by_jira: {str(ex)}")
+            raise StorageException("Storage operation failed.")
 
     @classmethod
     def get_recent_by_jira(cls, db: Session, jira_id: str, depth: int) -> list[dict]:
@@ -173,7 +173,7 @@ class ContextService:
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
             log.error("get_recent_by_jira failed - jira_id=%s depth=%d error=%s", jira_id, depth, ex)
-            raise StorageException(f"Database error during get_recent_by_jira: {str(ex)}")
+            raise StorageException("Storage operation failed.")
 
     @classmethod
     def update(
@@ -202,7 +202,7 @@ class ContextService:
         except SQLAlchemyError as ex:
             db.rollback()
             log.error("update failed - key=%s entry_id=%s error=%s", key, entry_id, ex)
-            raise StorageException(f"Database error during update: {str(ex)}")
+            raise StorageException("Storage operation failed.")
 
     @classmethod
     def delete(cls, db: Session, key: str, entry_id: str) -> None:
@@ -231,4 +231,4 @@ class ContextService:
         except SQLAlchemyError as ex:
             db.rollback()
             log.error("delete failed - key=%s entry_id=%s error=%s", key, entry_id, ex)
-            raise StorageException(f"Database error during delete: {str(ex)}")
+            raise StorageException("Storage operation failed.")

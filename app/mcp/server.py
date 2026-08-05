@@ -27,6 +27,15 @@ SUMMARY_SECTION_NAMES = (
     "Validation performed",
 )
 
+_SENSITIVE_PATTERNS = (
+    re.compile(r"(?i)(password|passwd|pwd)\s*[:=]\s*([^\s,;]+)"),
+    re.compile(r"(?i)(api[_-]?key|secret|token|access[_-]?token|refresh[_-]?token)\s*[:=]\s*([^\s,;]+)"),
+    re.compile(r"(?i)(authorization\s*[:=]\s*bearer\s+)([^\s,;]+)"),
+    re.compile(r"(?i)(postgres(?:ql)?://[^:\s]+:)([^@\s]+)(@)"),
+)
+
+_REDACTION_PLACEHOLDER = "[REDACTED]"
+
 mcp = FastMCP("fungus-knowledge-mcp")
 
 _LOG_DIR = Path(os.getenv("FUNGUS_LOG_DIR", Path(__file__).resolve().parents[2] / "logs"))
@@ -139,6 +148,16 @@ def _extract_summary_sections(content: str) -> dict[str, str]:
     return extracted
 
 
+def _redact_sensitive_text(value: str) -> str:
+    """Redact common secret-like tokens from user-visible summary text."""
+    redacted = value
+    redacted = _SENSITIVE_PATTERNS[0].sub(r"\1=" + _REDACTION_PLACEHOLDER, redacted)
+    redacted = _SENSITIVE_PATTERNS[1].sub(r"\1=" + _REDACTION_PLACEHOLDER, redacted)
+    redacted = _SENSITIVE_PATTERNS[2].sub(r"\1" + _REDACTION_PLACEHOLDER, redacted)
+    redacted = _SENSITIVE_PATTERNS[3].sub(r"\1" + _REDACTION_PLACEHOLDER + r"\3", redacted)
+    return redacted
+
+
 def _merge_entries_for_summary(entries: list[dict[str, Any]]) -> dict[str, list[str]]:
     """Merge entries into deduplicated section buckets for display."""
     merged: dict[str, list[str]] = {name: [] for name in SUMMARY_SECTION_NAMES}
@@ -180,7 +199,7 @@ def _render_jira_summary(jira_id: str, entries: list[dict[str, Any]]) -> list[st
             continue
         lines.append(f"**{section_name}:**")
         for point in points:
-            lines.append(f"- {point}")
+            lines.append(f"- {_redact_sensitive_text(point)}")
 
     lines.append("")
     lines.append("Need deeper history or more context? Share a file/line range or request a higher depth.")
@@ -275,7 +294,7 @@ async def _save_context(ticket_ids: list[str], content: str, metadata: dict[str,
         "metadata": metadata,
     }
     url = f"{_base_url()}/api/v1/context/"
-    log.debug("POST %s payload ticket_ids=%s content_preview=%r", url, ticket_ids, content[:200])
+    log.debug("POST %s payload ticket_ids=%s content_length=%d", url, ticket_ids, len(content))
 
     try:
         async with httpx.AsyncClient(timeout=_timeout_seconds()) as client:
@@ -287,10 +306,9 @@ async def _save_context(ticket_ids: list[str], content: str, metadata: dict[str,
             return data
     except httpx.HTTPStatusError as exc:
         log.error(
-            "HTTP error saving context — status=%d url=%s body=%r",
+            "HTTP error saving context — status=%d url=%s",
             exc.response.status_code,
             exc.request.url,
-            exc.response.text[:500],
         )
         raise
     except httpx.RequestError as exc:
@@ -335,10 +353,9 @@ async def _retrieve_context(jira_ids: list[str], depth: int | None) -> dict[str,
 
     except httpx.HTTPStatusError as exc:
         log.error(
-            "HTTP error retrieving context — status=%d url=%s body=%r",
+            "HTTP error retrieving context — status=%d url=%s",
             exc.response.status_code,
             exc.request.url,
-            exc.response.text[:500],
         )
         raise
     except httpx.RequestError as exc:
