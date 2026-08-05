@@ -6,6 +6,7 @@ Run with:  python -m pytest tests/test_api.py -v
 
 import pytest
 from fastapi.testclient import TestClient
+from app.core.exceptions import StorageException
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -166,6 +167,20 @@ class TestListKeys:
         create_entry(client, ["DUP-1"], "second")
         keys = client.get("/api/v1/context/").json()["keys"]
         assert keys.count("[DUP-1]") == 1
+
+    def test_list_storage_error_returns_generic_message(self, client, monkeypatch):
+        from app.api.v1 import context as context_api
+
+        def _raise_storage_error(_db):
+            raise StorageException("Database credentials leaked")
+
+        monkeypatch.setattr(context_api.ContextService, "list_keys", _raise_storage_error)
+
+        resp = client.get("/api/v1/context/")
+        assert resp.status_code == 500
+        body = resp.json()
+        assert body["error"] == "STORAGE_ERROR"
+        assert body["message"] == "Storage operation failed."
 
 
 # ===========================================================================

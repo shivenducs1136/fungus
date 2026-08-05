@@ -178,3 +178,29 @@ def test_format_retrieval_summary_merges_repetitive_points():
 
     assert message.count("**Decision:**") == 1
     assert message.count("- Use direct function pointers") == 1
+
+
+def test_format_retrieval_summary_redacts_sensitive_values():
+    message = mcp_server._format_retrieval_summary(
+        {
+            "ERP-24": [
+                {
+                    "content": (
+                        "Decision: set password=supersecret and "
+                        "api_key=abc123 and "
+                        "Authorization: Bearer token123 and "
+                        "postgresql://user:pass123@localhost:5432/fungus"
+                    ),
+                    "metadata": {},
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": None,
+                }
+            ]
+        }
+    )
+
+    assert "supersecret" not in message
+    assert "abc123" not in message
+    assert "token123" not in message
+    assert "pass123" not in message
+    assert "[REDACTED]" in message
