@@ -2,6 +2,7 @@
 
 import re
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
@@ -74,3 +75,59 @@ class UpdateContextRequest(BaseModel):
         if not content.strip():
             raise ValueError("Content cannot be blank")
         return content
+
+
+class DemoBookingRequest(BaseModel):
+    """Request payload for booking a demo."""
+
+    name: str = Field(min_length=1, max_length=120)
+    work_email: str = Field(min_length=5, max_length=254)
+    time: str = Field(min_length=1, max_length=80, description="Preferred time window")
+    contact_number: str = Field(min_length=7, max_length=20, description="Must include country code")
+    short_note: Optional[str] = Field(default=None, max_length=2000)
+    scheduled_datetime: datetime
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Name cannot be blank")
+        return value.strip()
+
+    @field_validator("work_email")
+    @classmethod
+    def validate_work_email(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", cleaned):
+            raise ValueError("Invalid work email address")
+        return cleaned
+
+    @field_validator("time")
+    @classmethod
+    def validate_time(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Time cannot be blank")
+        return value.strip()
+
+    @field_validator("contact_number")
+    @classmethod
+    def validate_contact_number(cls, value: str) -> str:
+        cleaned = value.strip().replace(" ", "")
+        if not re.match(r"^\+\d{6,15}$", cleaned):
+            raise ValueError("Contact number must include country code (e.g. +15551234567)")
+        return cleaned
+
+    @field_validator("short_note")
+    @classmethod
+    def validate_short_note(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        trimmed = value.strip()
+        return trimmed or None
+
+    @field_validator("scheduled_datetime")
+    @classmethod
+    def validate_scheduled_datetime(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value

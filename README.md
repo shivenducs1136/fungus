@@ -489,6 +489,13 @@ Quick steps:
 | `KNOWLEDGE_SERVER_TIMEOUT_SECONDS` | `15` | HTTP timeout for knowledge server calls |
 | `FUNGUS_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
 | `FUNGUS_LOG_DIR` | `<repo_root>/logs/` | Directory where `knowledge_server.log`, `mcp_server.log`, and `extract_regex_from_commit.log` are written |
+| `DEMO_EMAIL_ENABLED` | `false` | Enable demo booking confirmation email automation |
+| `SMTP_HOST` | _none_ | SMTP host for outgoing emails |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_USERNAME` | _none_ | SMTP auth username |
+| `SMTP_PASSWORD` | _none_ | SMTP auth password |
+| `SMTP_SENDER_EMAIL` | `SMTP_USERNAME` | Sender email address |
+| `SMTP_USE_TLS` | `true` | Use STARTTLS for SMTP transport |
 
 Copy `.env.example` to `.env` and adjust as needed.
 
@@ -504,6 +511,40 @@ Run MCP tests:
 
 ```bash
 pytest tests/test_mcp_server.py -v
+```
+
+## Demo Booking API
+
+Create a demo booking:
+
+```bash
+POST /api/v1/demo-bookings/
+```
+
+Request payload:
+
+```json
+{
+   "name": "Ada Lovelace",
+   "work_email": "ada@company.com",
+   "time": "10:30 AM UTC",
+   "contact_number": "+14155552671",
+   "short_note": "Need architecture walkthrough",
+   "scheduled_datetime": "2026-08-20T10:30:00+00:00"
+}
+```
+
+The API stores these fields and also generates:
+
+- `submitted_datetime` (UTC timestamp when form was submitted)
+- `booking_id`
+
+After successful creation, the backend automatically attempts to send a confirmation email to `work_email`.
+
+Manual email automation script:
+
+```bash
+python -m app.scripts.auto_email_demo_booking --email someone@company.com --name "Jane Doe" --scheduled-datetime "2026-08-15T10:30:00+00:00" --time "10:30 AM UTC" --contact-number "+15551234567"
 ```
 
 ## TODO

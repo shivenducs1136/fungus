@@ -23,3 +23,16 @@ class ContextJiraIndex(Base):
     __table_args__ = (
         UniqueConstraint('jira_id', 'group_key', name='uq_jira_group_key'),
     )
+
+
+class DemoBooking(Base):
+    __tablename__ = "demo_bookings"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    work_email = Column(String, nullable=False, index=True)
+    preferred_time = Column(String, nullable=False)
+    contact_number = Column(String, nullable=False)
+    short_note = Column(Text, nullable=True)
+    submitted_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    scheduled_at = Column(DateTime, nullable=False)

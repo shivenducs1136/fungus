@@ -63,3 +63,18 @@ class ErrorResponse(BaseModel):
     error: str = Field(description="Error code (e.g., CONTEXT_NOT_FOUND).")
     message: str = Field(description="Error message.")
     timestamp: str = Field(description="Error timestamp (ISO 8601).")
+
+
+class DemoBookingResponse(BaseModel):
+    """Response after creating a demo booking."""
+
+    status: str = Field(default="created", description="Operation status.")
+    booking_id: str = Field(description="Unique booking identifier.")
+    name: str = Field(description="Requester name.")
+    work_email: str = Field(description="Requester work email address.")
+    time: str = Field(description="Preferred time window provided by requester.")
+    contact_number: str = Field(description="Requester contact number with country code.")
+    short_note: Optional[str] = Field(default=None, description="Optional short note from requester.")
+    submitted_datetime: str = Field(description="Date/time when form was submitted.")
+    scheduled_datetime: str = Field(description="Requested scheduled date/time for demo.")
+    email_status: str = Field(description="Email automation result: sent or skipped.")

@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app.api.v1.context import router
+from app.api.v1.context import router as context_router
+from app.api.v1.demo_booking import router as demo_booking_router
 
 from app.core.exceptions import (
     ContextNotFoundException,
@@ -58,4 +59,5 @@ app.add_exception_handler(
     storage_error_handler
 )
 
-app.include_router(router)
+app.include_router(context_router)
+app.include_router(demo_booking_router)
