@@ -40,7 +40,10 @@
 
 .collect { padding: 20px 0 90px; }
 .label-box {
-  border: 1.5px solid var(--ink); max-width: 740px; padding: 0; background: var(--paper-2); margin-bottom: 20px;
+  border: 1.5px solid var(--ink); max-width: 740px; padding: 0; background: var(--paper-2); margin: 0 auto 20px;
+}
+.label-box:last-child {
+  margin-bottom: 0;
 }
 .label-head {
   display: flex; justify-content: space-between; align-items: center;
@@ -217,6 +220,7 @@
   flex-grow: 1;
   margin-right: 12px;
   font-family: 'Space Mono', monospace;
+  min-width: 0;
 }
 .copy-btn {
   background: none;

@@ -1,4 +1,6 @@
 import type {
+  BookDemoRequest,
+  BookDemoResponse,
   ContextEntry,
   CreateContextRequest,
   ListKeysResponse,
@@ -100,3 +102,11 @@ export function deleteContextEntry(
     method: 'DELETE',
   })
 }
+
+export function createDemoBooking(payload: BookDemoRequest): Promise<BookDemoResponse> {
+  return request<BookDemoResponse>('/api/v1/demo-bookings/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+

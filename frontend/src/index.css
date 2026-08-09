@@ -13,6 +13,10 @@
   --border-strong: rgba(38,34,26,0.3);
 }
 
+html, body {
+  overflow-x: hidden;
+}
+
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
   background:var(--paper);
@@ -32,7 +36,7 @@ body{
   flex-direction: column;
 }
 
-.wrap{max-width:1040px; margin:0 auto; padding:0 32px; width: 100%;}
+.wrap{max-width:1040px; margin:0 auto; padding:0 32px; width: 100%; box-sizing: border-box;}
 .mono{font-family:'Space Mono', monospace;}
 
 /* Header styles */
@@ -58,7 +62,11 @@ footer{border-top:1.5px solid var(--ink); padding:26px 0; margin-top: auto;}
 .foot-row{display:flex; justify-content:space-between; font-family:'Space Mono', monospace; font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.05em;}
 
 /* Docs specific base styles */
-.docs-wrap { max-width: 1140px; margin: 0 auto; padding: 0 32px; }
+.docs-wrap { max-width: 1140px; margin: 0 auto; padding: 0 32px; width: 100%; box-sizing: border-box; }
+
+@media (max-width: 600px) {
+  .wrap, .docs-wrap { padding: 0 16px; }
+}
 
 /* Buttons */
 .btn { color:var(--ink); font-family:'Space Mono',monospace; font-size:15px; border: 1px solid var(--ink); padding: 10px 20px; text-decoration: none; display: inline-block; transition: background 0.2s; cursor: pointer; }
