@@ -52,6 +52,9 @@
 .main-content {
   flex-grow: 1;
   max-width: 720px;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .main-content h1 {
@@ -93,6 +96,7 @@
   padding: 2px 6px;
   border: 1px solid var(--line);
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .main-content pre {
@@ -101,6 +105,7 @@
   padding: 20px;
   margin: 24px 0;
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .main-content pre code {
@@ -127,6 +132,7 @@
   border: 1px solid var(--ink);
   padding: 10px 14px;
   margin: 20px 0;
+  max-width: 100%;
 }
 .code-content {
   font-size: 13.5px;
@@ -136,6 +142,7 @@
   flex-grow: 1;
   margin-right: 16px;
   font-family: 'Space Mono', monospace;
+  min-width: 0;
 }
 .copy-btn {
   background: none;
@@ -154,6 +161,7 @@
 }
 
 @media (max-width: 800px) {
-  .docs-container { flex-direction: column; }
+  .docs-container { flex-direction: column; gap: 30px; padding: 30px 0 60px; }
   .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--line); padding-bottom: 30px; position: static; }
+  .main-content { max-width: 100%; width: 100%; min-width: 0; }
 }

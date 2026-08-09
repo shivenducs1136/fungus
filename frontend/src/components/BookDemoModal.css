@@ -1,0 +1,511 @@
+/* Modal Backdrop & Container */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(38, 34, 26, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-card {
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 32px rgba(38, 34, 26, 0.25);
+  position: relative;
+  animation: modalSlideIn 0.25s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  border-bottom: 1.5px solid var(--ink);
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--paper-2);
+}
+
+.modal-title {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: var(--rust);
+  color: var(--paper);
+  border-color: var(--rust);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-subtitle {
+  font-family: 'Source Serif 4', serif;
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Form Controls */
+.demo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+}
+
+.form-label .required {
+  color: var(--rust);
+  margin-left: 4px;
+}
+
+.form-input,
+.form-textarea {
+  font-family: 'Source Serif 4', serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--border-strong);
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  width: 100%;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  border-color: var(--ink);
+  background: #FFF;
+}
+
+.form-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+/* Google Calendar Scheduler Component */
+.gcal-scheduler {
+  border: 1px solid var(--border-strong);
+  background: var(--paper-2);
+  border-radius: 8px;
+  padding: 18px;
+  margin-top: 6px;
+  box-shadow: 0 4px 16px rgba(38, 34, 26, 0.06);
+}
+
+/* Header Bar */
+.gcal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gcal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gcal-today-btn {
+  background: var(--paper);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gcal-today-btn:hover {
+  background: #1a73e8;
+  color: #ffffff;
+  border-color: #1a73e8;
+}
+
+.gcal-nav-arrows {
+  display: flex;
+  gap: 4px;
+}
+
+.gcal-nav-btn {
+  background: var(--paper);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.gcal-nav-btn:hover:not(:disabled) {
+  background: #1a73e8;
+  color: #ffffff;
+  border-color: #1a73e8;
+}
+
+.gcal-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gcal-month-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.gcal-timezone-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Weekday Selector Tabs */
+.gcal-day-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.gcal-day-tab {
+  flex: 1;
+  min-width: 64px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--ink); /* GUARANTEED HIGH CONTRAST INACTIVE TEXT */
+}
+
+.gcal-day-tab:hover:not(.is-past) {
+  border-color: #1a73e8;
+  background: rgba(26, 115, 232, 0.08);
+}
+
+.gcal-day-tab.active {
+  border-color: #1a73e8;
+  background: #1a73e8;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3);
+}
+
+.gcal-day-tab.is-past {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.gcal-day-name {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: inherit; /* Inherits contrast from button */
+  letter-spacing: 0.04em;
+}
+
+.gcal-date-badge {
+  font-family: 'Source Serif 4', serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 4px;
+  color: inherit;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.gcal-day-tab.is-today .gcal-date-badge {
+  background: #1a73e8;
+  color: #ffffff;
+}
+
+.gcal-day-tab.active .gcal-date-badge {
+  background: #ffffff;
+  color: #1a73e8;
+}
+
+/* Slots Container */
+.gcal-slots-container {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.gcal-slot-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gcal-section-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gcal-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.gcal-time-pill {
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  border-radius: 6px;
+  padding: 7px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  color: var(--ink);
+}
+
+.gcal-time-pill:hover {
+  border-color: #1a73e8;
+  background: rgba(26, 115, 232, 0.08);
+  color: #1a73e8;
+}
+
+.gcal-time-pill.selected {
+  background: #1a73e8;
+  color: #ffffff !important;
+  border-color: #174ea6;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.35);
+}
+
+.gcal-slot-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: inherit;
+}
+
+.gcal-slot-dur {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  opacity: 0.8;
+  color: inherit;
+}
+
+/* Event Summary Box */
+.gcal-selection-summary {
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: rgba(26, 115, 232, 0.08);
+  border: 1.5px solid #1a73e8;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.gcal-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gcal-summary-check {
+  background: #1a73e8;
+  color: #ffffff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.gcal-summary-date {
+  font-family: 'Source Serif 4', serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.gcal-summary-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.gcal-summary-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  background: #1a73e8;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Feedback & Banners */
+.form-error-banner {
+  background: rgba(156, 91, 60, 0.12);
+  border: 1px solid var(--rust);
+  color: var(--rust);
+  padding: 10px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+}
+
+.form-success-card {
+  background: var(--paper-2);
+  border: 1px solid var(--lichen);
+  padding: 24px;
+  text-align: center;
+}
+
+.success-icon {
+  font-size: 36px;
+  color: var(--lichen);
+  margin-bottom: 12px;
+}
+
+.success-title {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+.success-details {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin: 16px 0;
+  line-height: 1.6;
+  text-align: left;
+  background: var(--paper);
+  padding: 12px 16px;
+  border: 1px dashed var(--line);
+}
+
+/* Header Nav Demo Button */
+.nav-book-demo-btn {
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 4px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-book-demo-btn:hover {
+  background: var(--rust);
+  border-color: var(--rust);
+  color: var(--paper);
+}

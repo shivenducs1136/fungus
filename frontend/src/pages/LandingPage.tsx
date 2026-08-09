@@ -100,7 +100,7 @@ export const LandingPage = () => {
             </div>
           </div>
           
-          <div className="label-box" style={{marginBottom: 0}}>
+          <div className="label-box">
             <div className="label-head">
               <span>specimen no. 002 — building from source</span>
               <span>coll. local-repo/</span>
