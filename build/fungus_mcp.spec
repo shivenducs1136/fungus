@@ -34,6 +34,7 @@ a = Analysis(
         "git",
         "git.repo",
         "git.repo.base",
+        "starlette",
     ],
     hookspath=[],
     hooksconfig={},
@@ -42,7 +43,6 @@ a = Analysis(
         # Server-side packages not needed in the MCP client executable.
         "uvicorn",
         "fastapi",
-        "starlette",
         "sqlalchemy",
         "psycopg2",
     ],

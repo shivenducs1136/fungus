@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Builds fungus-mcp.exe - a self-contained MCP server executable.
 .EXAMPLE
@@ -21,6 +21,12 @@ try {
     if ($Clean) {
         Write-Host "Cleaning previous build artifacts..." -ForegroundColor Yellow
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue dist, build\__pycache__
+    }
+
+    $reqFile = Join-Path $RepoRoot "requirements.txt"
+    if (Test-Path $reqFile) {
+        Write-Host "Installing dependencies from requirements.txt..." -ForegroundColor Cyan
+        pip install -r $reqFile
     }
 
     $pyinstaller = Get-Command pyinstaller -ErrorAction SilentlyContinue
