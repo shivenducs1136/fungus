@@ -45,3 +45,6 @@ temp_*.json
 temp_*.txt
 
 logs/
+
+# Local docker-compose secrets
+secrets/

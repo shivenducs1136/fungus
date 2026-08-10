@@ -9,6 +9,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      SMTP_CREDENTIALS_KEY_FILE: /run/secrets/smtp_credentials_key
+    secrets:
+      - smtp_credentials_key
     depends_on:
       db:
         condition: service_healthy
@@ -26,6 +30,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      SMTP_CREDENTIALS_KEY_FILE: /run/secrets/smtp_credentials_key
+    secrets:
+      - smtp_credentials_key
     volumes:
       - .:/app
     depends_on:
@@ -92,3 +100,7 @@ networks:
 
 volumes:
   postgres_data:
+
+secrets:
+  smtp_credentials_key:
+    file: ${SMTP_CREDENTIALS_KEY_SOURCE_FILE:-./secrets/smtp_credentials_key}

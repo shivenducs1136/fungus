@@ -494,6 +494,9 @@ Quick steps:
 | `SMTP_PORT` | `587` | SMTP port |
 | `SMTP_USERNAME` | _none_ | SMTP auth username |
 | `SMTP_PASSWORD` | _none_ | SMTP auth password |
+| `SMTP_PASSWORD_ENCRYPTED` | _none_ | Encrypted SMTP password (preferred over plain text) |
+| `SMTP_CREDENTIALS_KEY` | _none_ | Fernet key used to decrypt `SMTP_PASSWORD_ENCRYPTED` |
+| `SMTP_CREDENTIALS_KEY_FILE` | `/run/secrets/smtp_credentials_key` | Path to file containing Fernet decryption key (preferred) |
 | `SMTP_SENDER_EMAIL` | `SMTP_USERNAME` | Sender email address |
 | `SMTP_USE_TLS` | `true` | Use STARTTLS for SMTP transport |
 
@@ -546,6 +549,42 @@ Manual email automation script:
 ```bash
 python -m app.scripts.auto_email_demo_booking --email someone@company.com --name "Jane Doe" --scheduled-datetime "2026-08-15T10:30:00+00:00" --time "10:30 AM UTC" --contact-number "+15551234567"
 ```
+
+### Encrypted SMTP Password Setup
+
+You can keep encrypted SMTP credentials in `.env` and decrypt at runtime.
+
+1. Generate a Fernet key (store securely, not in git):
+   ```bash
+   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   ```
+
+2. Encrypt your SMTP password using that key:
+   ```bash
+   python -c "from cryptography.fernet import Fernet; key='PASTE_KEY'; print(Fernet(key.encode()).encrypt('PASTE_SMTP_PASSWORD'.encode()).decode())"
+   ```
+
+3. Store key outside `.env` in a file on the server (or Docker secret) at `/run/secrets/smtp_credentials_key`.
+
+If you run with Docker Compose, this repository now mounts a secret named `smtp_credentials_key` automatically for `api-dev` and `api-release`.
+
+- Default source file on host: `./secrets/smtp_credentials_key`
+- Optional override: set `SMTP_CREDENTIALS_KEY_SOURCE_FILE` to another host file path
+
+Create the secret source file before `docker compose up`:
+
+```bash
+mkdir -p secrets
+printf "%s" "PASTE_KEY_HERE" > secrets/smtp_credentials_key
+```
+
+4. Configure environment values:
+   - `SMTP_PASSWORD_ENCRYPTED=<ciphertext from step 2>`
+   - `SMTP_CREDENTIALS_KEY_FILE=/run/secrets/smtp_credentials_key`
+   - leave `SMTP_PASSWORD` empty
+
+At runtime the app uses `SMTP_PASSWORD_ENCRYPTED` first; if absent, it falls back to `SMTP_PASSWORD`.
+For decryption key lookup, it reads `SMTP_CREDENTIALS_KEY_FILE` first and only falls back to `SMTP_CREDENTIALS_KEY` for backward compatibility.
 
 ## TODO
 - Migrate database interactions from synchronous `psycopg2-binary` + SQLAlchemy to asynchronous using `asyncpg` to follow FastAPI best practices for async I/O.
