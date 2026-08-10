@@ -48,6 +48,8 @@ services:
     build:
       context: ./frontend
       target: release
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     container_name: fungus_frontend_release
     ports:
       - "3000:80"
