@@ -69,5 +69,5 @@ footer{border-top:1.5px solid var(--ink); padding:26px 0; margin-top: auto;}
 }
 
 /* Buttons */
-.btn { color:var(--ink); font-family:'Space Mono',monospace; font-size:15px; border: 1px solid var(--ink); padding: 10px 20px; text-decoration: none; display: inline-block; transition: background 0.2s; cursor: pointer; }
+.btn { background: transparent; color:var(--ink); font-family:'Space Mono',monospace; font-size:15px; border: 1px solid var(--ink); padding: 10px 20px; text-decoration: none; display: inline-block; transition: background 0.2s, color 0.2s; cursor: pointer; }
 .btn:hover { background: var(--ink); color: var(--paper); }
