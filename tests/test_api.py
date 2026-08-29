@@ -12,7 +12,7 @@ from app.core.exceptions import StorageException
 # Fixtures
 # ---------------------------------------------------------------------------
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from app.core.database import Base
 import app.core.database as db_module
@@ -27,6 +27,13 @@ def isolated_storage(tmp_path, monkeypatch):
     test_engine = create_engine(
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
     )
+
+    @event.listens_for(test_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
     
     monkeypatch.setattr(db_module, "engine", test_engine)
@@ -399,7 +406,7 @@ class TestDelete:
         resp = client.get(f"/api/v1/context/{key}")
         assert resp.status_code == 404
 
-    def test_delete_last_entry_removes_from_jira_index(self, client):
+    def test_delete_cascades_ticket_associations(self, client):
         created = create_entry(client, ["DEL-1"], "only entry")
         key, eid = created["key"], created["entry_id"]
         client.delete(f"/api/v1/context/{key}/{eid}")
@@ -418,8 +425,7 @@ class TestDelete:
         resp = client.delete("/api/v1/context/GHOST-1/bad-id")
         assert resp.status_code == 404
 
-    def test_delete_jira_index_cleaned_when_key_removed(self, client):
-        # Entry spans two JIRA IDs; after deletion both should be gone from index
+    def test_delete_cascades_all_ticket_associations(self, client):
         created = create_entry(client, ["DEL-1", "DEL-2"], "combined")
         key, eid = created["key"], created["entry_id"]
         client.delete(f"/api/v1/context/{key}/{eid}")
@@ -487,203 +493,7 @@ class TestEdgeCases:
             "content": large_content
         })
         assert resp.status_code == 201
-        
-        # Verify it can be retrieved
-    def test_get_specific_entry(self, client):
-        created = create_entry(client, ["ENT-1"], "specific content")
-        key = created["key"]
-        entry_id = created["entry_id"]
-        resp = client.get(f"/api/v1/context/{key}/{entry_id}")
-        assert resp.status_code == 200
-        assert resp.json()["content"] == "specific content"
 
-    def test_get_correct_entry_among_multiple(self, client):
-        e1 = create_entry(client, ["ENT-1"], "entry one")
-        e2 = create_entry(client, ["ENT-1"], "entry two")
-        resp = client.get(f"/api/v1/context/[ENT-1]/{e2['entry_id']}")
-        assert resp.json()["content"] == "entry two"
-
-    def test_get_nonexistent_entry_id_returns_404(self, client):
-        create_entry(client, ["ENT-1"], "exists")
-        resp = client.get("/api/v1/context/[ENT-1]/00000000-0000-0000-0000-000000000000")
-        assert resp.status_code == 404
-
-    def test_get_entry_wrong_key_returns_404(self, client):
-        created = create_entry(client, ["ENT-1"], "exists")
-        resp = client.get(f"/api/v1/context/WRONG-KEY/{created['entry_id']}")
-        assert resp.status_code == 404
-
-
-# ===========================================================================
-# UPDATE  PUT /api/v1/context/{key}/{entry_id}
-# ===========================================================================
-
-class TestUpdate:
-
-    def test_update_content(self, client):
-        created = create_entry(client, ["UPD-1"], "original")
-        key, eid = created["key"], created["entry_id"]
-        resp = client.put(f"/api/v1/context/{key}/{eid}", json={"content": "updated"})
-        assert resp.status_code == 200
-        assert resp.json()["content"] == "updated"
-
-    def test_update_metadata(self, client):
-        created = create_entry(client, ["UPD-1"], "content")
-        key, eid = created["key"], created["entry_id"]
-        resp = client.put(f"/api/v1/context/{key}/{eid}", json={
-            "content": "content",
-            "metadata": {"version": 2}
-        })
-        assert resp.json()["metadata"]["version"] == 2
-
-    def test_update_persists(self, client):
-        created = create_entry(client, ["UPD-1"], "old")
-        key, eid = created["key"], created["entry_id"]
-        client.put(f"/api/v1/context/{key}/{eid}", json={"content": "new"})
-        fetched = client.get(f"/api/v1/context/{key}/{eid}").json()
-        assert fetched["content"] == "new"
-
-    def test_update_sets_updated_at(self, client):
-        created = create_entry(client, ["UPD-1"], "content")
-        key, eid = created["key"], created["entry_id"]
-        resp = client.put(f"/api/v1/context/{key}/{eid}", json={"content": "new"})
-        assert "updated_at" in resp.json()
-
-    def test_update_does_not_affect_other_entries(self, client):
-        e1 = create_entry(client, ["UPD-1"], "first")
-        e2 = create_entry(client, ["UPD-1"], "second")
-        client.put(f"/api/v1/context/[UPD-1]/{e1['entry_id']}", json={"content": "changed"})
-        e2_fetched = client.get(f"/api/v1/context/[UPD-1]/{e2['entry_id']}").json()
-        assert e2_fetched["content"] == "second"
-
-    def test_update_nonexistent_entry_returns_404(self, client):
-        resp = client.put("/api/v1/context/GHOST-1/bad-id", json={"content": "x"})
-        assert resp.status_code == 404
-
-    def test_update_missing_content_returns_422(self, client):
-        created = create_entry(client, ["UPD-1"], "original")
-        key, eid = created["key"], created["entry_id"]
-        resp = client.put(f"/api/v1/context/{key}/{eid}", json={})
-        assert resp.status_code == 422
-
-
-# ===========================================================================
-# DELETE  DELETE /api/v1/context/{key}/{entry_id}
-# ===========================================================================
-
-class TestDelete:
-
-    def test_delete_entry(self, client):
-        created = create_entry(client, ["DEL-1"], "to be deleted")
-        key, eid = created["key"], created["entry_id"]
-        resp = client.delete(f"/api/v1/context/{key}/{eid}")
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "deleted"
-
-    def test_deleted_entry_no_longer_reachable(self, client):
-        created = create_entry(client, ["DEL-1"], "gone")
-        key, eid = created["key"], created["entry_id"]
-        client.delete(f"/api/v1/context/{key}/{eid}")
-        resp = client.get(f"/api/v1/context/{key}/{eid}")
-        assert resp.status_code == 404
-
-    def test_delete_last_entry_removes_key(self, client):
-        created = create_entry(client, ["DEL-1"], "only entry")
-        key, eid = created["key"], created["entry_id"]
-        client.delete(f"/api/v1/context/{key}/{eid}")
-        resp = client.get(f"/api/v1/context/{key}")
-        assert resp.status_code == 404
-
-    def test_delete_last_entry_removes_from_jira_index(self, client):
-        created = create_entry(client, ["DEL-1"], "only entry")
-        key, eid = created["key"], created["entry_id"]
-        client.delete(f"/api/v1/context/{key}/{eid}")
-        resp = client.get("/api/v1/context/jira/DEL-1")
-        assert resp.status_code == 404
-
-    def test_delete_one_entry_leaves_others(self, client):
-        e1 = create_entry(client, ["DEL-1"], "keep me")
-        e2 = create_entry(client, ["DEL-1"], "delete me")
-        client.delete(f"/api/v1/context/[DEL-1]/{e2['entry_id']}")
-        entries = client.get("/api/v1/context/[DEL-1]").json()
-        assert len(entries) == 1
-        assert entries[0]["content"] == "keep me"
-
-    def test_delete_nonexistent_entry_returns_404(self, client):
-        resp = client.delete("/api/v1/context/GHOST-1/bad-id")
-        assert resp.status_code == 404
-
-    def test_delete_jira_index_cleaned_when_key_removed(self, client):
-        # Entry spans two JIRA IDs; after deletion both should be gone from index
-        created = create_entry(client, ["DEL-1", "DEL-2"], "combined")
-        key, eid = created["key"], created["entry_id"]
-        client.delete(f"/api/v1/context/{key}/{eid}")
-        assert client.get("/api/v1/context/jira/DEL-1").status_code == 404
-        assert client.get("/api/v1/context/jira/DEL-2").status_code == 404
-
-
-# ===========================================================================
-# END-TO-END FLOW
-# ===========================================================================
-
-class TestEndToEnd:
-
-    def test_full_crud_lifecycle(self, client):
-        # CREATE
-        created = create_entry(client, ["E2E-1", "E2E-2"], "initial", {"v": 1})
-        key, eid = created["key"], created["entry_id"]
-        assert key == "[E2E-1][E2E-2]"
-
-        # READ via key
-        entries = client.get(f"/api/v1/context/{key}").json()
-        assert entries[0]["content"] == "initial"
-
-        # READ via jira search
-        results = client.get("/api/v1/context/jira/E2E-1").json()
-        assert any(e["entry_id"] == eid for e in results)
-
-        # UPDATE
-        client.put(f"/api/v1/context/{key}/{eid}", json={"content": "revised", "metadata": {"v": 2}})
-        updated = client.get(f"/api/v1/context/{key}/{eid}").json()
-        assert updated["content"] == "revised"
-        assert updated["metadata"]["v"] == 2
-
-        # DELETE
-        client.delete(f"/api/v1/context/{key}/{eid}")
-        assert client.get(f"/api/v1/context/{key}").status_code == 404
-        assert client.get("/api/v1/context/jira/E2E-1").status_code == 404
-
-    def test_search_after_partial_delete(self, client):
-        e1 = create_entry(client, ["MIX-1"], "standalone")
-        e2 = create_entry(client, ["MIX-1", "MIX-2"], "combined")
-
-        # Delete only the combined entry
-        client.delete(f"/api/v1/context/[MIX-1][MIX-2]/{e2['entry_id']}")
-
-        # MIX-1 still reachable via standalone entry
-        results = client.get("/api/v1/context/jira/MIX-1").json()
-        assert len(results) == 1
-        assert results[0]["content"] == "standalone"
-
-        # MIX-2 is now gone
-        assert client.get("/api/v1/context/jira/MIX-2").status_code == 404
-
-
-# ===========================================================================
-# EDGE CASES & FAILURES
-# ===========================================================================
-
-class TestEdgeCases:
-
-    def test_extreme_large_payload(self, client):
-        large_content = "A" * 50_000
-        resp = client.post("/api/v1/context/", json={
-            "ticket_ids": ["LARGE-1"],
-            "content": large_content
-        })
-        assert resp.status_code == 201
-        
-        # Verify it can be retrieved
         entry_id = resp.json()["entry_id"]
         resp_get = client.get(f"/api/v1/context/[LARGE-1]/{entry_id}")
         assert resp_get.status_code == 200
@@ -711,8 +521,4 @@ class TestEdgeCases:
             "ticket_ids": ["FAIL-2"],
             "content": "Should fail gracefully"
         })
-        
-        # StorageException maps to 500 in FastAPI exception handlers (if configured)
-        # By default, FastAPI returns 500 for unhandled exceptions.
-        # Let's verify the status code is 500.
         assert resp.status_code == 500

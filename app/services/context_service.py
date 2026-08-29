@@ -3,8 +3,8 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from app.models.domain_models import ContextEntry, ContextJiraIndex
+from sqlalchemy.exc import SQLAlchemyError
+from app.models.domain_models import ContextEntry, EntryTicket
 from app.core.exceptions import ContextNotFoundException, StorageException
 from app.core.logging_config import get_logger
 
@@ -36,7 +36,7 @@ class ContextService:
     def _to_dict(cls, entry: ContextEntry) -> dict:
         return {
             "entry_id": entry.id,
-            "ticket_ids": entry.ticket_ids,
+            "ticket_ids": [t.jira_id for t in entry.tickets],
             "content": entry.content,
             "metadata": entry.metadata_json,
             "created_at": entry.created_at.isoformat() if entry.created_at else None,
@@ -55,29 +55,12 @@ class ContextService:
             entry = ContextEntry(
                 id=entry_id,
                 group_key=key,
-                ticket_ids=normalized_ticket_ids,
                 content=content,
                 metadata_json=metadata or {}
             )
+            for jira_id in normalized_ticket_ids:
+                entry.tickets.append(EntryTicket(entry_id=entry_id, jira_id=jira_id))
             db.add(entry)
-            
-            # Update JIRA index
-            for ticket_id in normalized_ticket_ids:
-                # Check if this index already exists
-                existing_idx = db.query(ContextJiraIndex).filter(
-                    ContextJiraIndex.jira_id == ticket_id,
-                    ContextJiraIndex.group_key == key
-                ).first()
-                if not existing_idx:
-                    idx = ContextJiraIndex(jira_id=ticket_id, group_key=key)
-                    db.add(idx)
-                    try:
-                        db.flush()
-                    except IntegrityError:
-                        db.rollback()
-                        # Duplicate key from race condition, ignore and continue
-                        pass
-                    
             db.commit()
             log.info("create success - key=%s entry_id=%s", key, entry_id)
             return {"key": key, "entry_id": entry_id}
@@ -133,18 +116,15 @@ class ContextService:
         """Get all entries containing the given JIRA ID."""
         try:
             normalized_jira_id = cls.normalize_ticket_id(jira_id)
-            
-            # Find all keys for this jira_id
-            keys = db.query(ContextJiraIndex.group_key).filter(
-                ContextJiraIndex.jira_id == normalized_jira_id
-            ).all()
-            
-            if not keys:
+            entries = (
+                db.query(ContextEntry)
+                .join(EntryTicket)
+                .filter(EntryTicket.jira_id == normalized_jira_id)
+                .all()
+            )
+            if not entries:
                 log.warning("get_by_jira not found - jira_id=%s normalized=%s", jira_id, normalized_jira_id)
                 raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
-                
-            key_list = [k[0] for k in keys]
-            entries = db.query(ContextEntry).filter(ContextEntry.group_key.in_(key_list)).all()
             log.info("get_by_jira success - jira_id=%s count=%d", jira_id, len(entries))
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
@@ -156,19 +136,17 @@ class ContextService:
         """Get the most recent N entries containing the given JIRA ID."""
         try:
             normalized_jira_id = cls.normalize_ticket_id(jira_id)
-            
-            keys = db.query(ContextJiraIndex.group_key).filter(
-                ContextJiraIndex.jira_id == normalized_jira_id
-            ).all()
-            
-            if not keys:
+            entries = (
+                db.query(ContextEntry)
+                .join(EntryTicket)
+                .filter(EntryTicket.jira_id == normalized_jira_id)
+                .order_by(ContextEntry.created_at.desc())
+                .limit(depth)
+                .all()
+            )
+            if not entries:
                 log.warning("get_recent_by_jira not found - jira_id=%s normalized=%s", jira_id, normalized_jira_id)
                 raise ContextNotFoundException(f"JIRA ID '{jira_id}' not found")
-                
-            key_list = [k[0] for k in keys]
-            entries = db.query(ContextEntry).filter(
-                ContextEntry.group_key.in_(key_list)
-            ).order_by(ContextEntry.created_at.desc()).limit(depth).all()
             log.info("get_recent_by_jira success - jira_id=%s depth=%d count=%d", jira_id, depth, len(entries))
             return [cls._to_dict(e) for e in entries]
         except SQLAlchemyError as ex:
@@ -206,7 +184,7 @@ class ContextService:
 
     @classmethod
     def delete(cls, db: Session, key: str, entry_id: str) -> None:
-        """Delete an entry. Removes the key if empty."""
+        """Delete an entry. Ticket associations are cascade-deleted by the DB."""
         log.info("delete called - key=%s entry_id=%s", key, entry_id)
         try:
             entry = db.query(ContextEntry).filter(
@@ -219,15 +197,8 @@ class ContextService:
                 raise ContextNotFoundException(f"Entry '{entry_id}' not found in key '{key}'")
                 
             db.delete(entry)
-            db.flush()
-            
-            # Check if the key bucket is now empty
-            remaining = db.query(ContextEntry).filter(ContextEntry.group_key == key).count()
-            if remaining == 0:
-                # Remove JIRA index references for this key
-                db.query(ContextJiraIndex).filter(ContextJiraIndex.group_key == key).delete()
             db.commit()
-            log.info("delete success - key=%s entry_id=%s remaining=%d", key, entry_id, remaining)
+            log.info("delete success - key=%s entry_id=%s", key, entry_id)
         except SQLAlchemyError as ex:
             db.rollback()
             log.error("delete failed - key=%s entry_id=%s error=%s", key, entry_id, ex)

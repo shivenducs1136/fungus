@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Integer, DateTime, JSON, Text, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, JSON, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime, timezone
 
@@ -7,22 +8,22 @@ class ContextEntry(Base):
 
     id = Column(String, primary_key=True, index=True)
     group_key = Column(String, index=True, nullable=False)
-    ticket_ids = Column(JSON, nullable=False)
     content = Column(Text, nullable=False)
     metadata_json = Column(JSON, nullable=False, default=dict)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=True)
 
-class ContextJiraIndex(Base):
-    __tablename__ = "context_jira_index"
+    tickets = relationship("EntryTicket", back_populates="entry",
+                           cascade="all, delete-orphan", lazy="joined")
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    jira_id = Column(String, index=True, nullable=False)
-    group_key = Column(String, index=True, nullable=False)
+class EntryTicket(Base):
+    __tablename__ = "entry_tickets"
 
-    __table_args__ = (
-        UniqueConstraint('jira_id', 'group_key', name='uq_jira_group_key'),
-    )
+    entry_id = Column(String, ForeignKey("context_entries.id", ondelete="CASCADE"),
+                      primary_key=True)
+    jira_id = Column(String, primary_key=True, index=True)
+
+    entry = relationship("ContextEntry", back_populates="tickets")
 
 
 class DemoBooking(Base):
