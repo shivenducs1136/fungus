@@ -10,7 +10,7 @@ class ContextEntry(Base):
     group_key = Column(String, index=True, nullable=False)
     content = Column(Text, nullable=False)
     metadata_json = Column(JSON, nullable=False, default=dict)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, index=True, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=True)
 
     tickets = relationship("EntryTicket", back_populates="entry",

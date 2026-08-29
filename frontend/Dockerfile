@@ -26,13 +26,14 @@ FROM nginx:alpine AS release
 
 # Copy built static files to Nginx html directory
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Store as template; envsubst fills in FUNGUS_API_KEY and API_BASE_URL at container start
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Expose port 80
 EXPOSE 80
 
-# Start Nginx server
-CMD ["nginx", "-g", "daemon off;"]
+# envsubst replaces ${FUNGUS_API_KEY} and ${API_BASE_URL} before nginx starts
+CMD ["/bin/sh", "-c", "envsubst '${FUNGUS_API_KEY} ${API_BASE_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
 
 
 FROM base AS dev

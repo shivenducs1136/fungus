@@ -6,7 +6,8 @@
       "args": [],
       "env": {
         "KNOWLEDGE_SERVER_BASE_URL": "http://135.235.194.98:8000",
-        "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+        "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15",
+        "FUNGUS_API_KEY": "<your_generated_key>"
       }
     }
   },

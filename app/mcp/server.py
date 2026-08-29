@@ -51,6 +51,14 @@ def _base_url() -> str:
     return url
 
 
+def _api_headers() -> dict[str, str]:
+    """Build outbound headers including the API key when configured."""
+    api_key = os.getenv("FUNGUS_API_KEY", "")
+    if api_key:
+        return {"X-API-Key": api_key}
+    return {}
+
+
 def _timeout_seconds() -> float:
     """Resolve outbound HTTP timeout for knowledge server calls."""
     raw = os.getenv("KNOWLEDGE_SERVER_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS))
@@ -297,7 +305,7 @@ async def _save_context(ticket_ids: list[str], content: str, metadata: dict[str,
     log.debug("POST %s payload ticket_ids=%s content_length=%d", url, ticket_ids, len(content))
 
     try:
-        async with httpx.AsyncClient(timeout=_timeout_seconds()) as client:
+        async with httpx.AsyncClient(timeout=_timeout_seconds(), headers=_api_headers()) as client:
             response = await client.post(url, json=payload)
             log.debug("Response status: %d", response.status_code)
             response.raise_for_status()
@@ -322,7 +330,7 @@ async def _retrieve_context(jira_ids: list[str], depth: int | None) -> dict[str,
     results: dict[str, list[dict[str, Any]]] = {}
 
     try:
-        async with httpx.AsyncClient(timeout=_timeout_seconds()) as client:
+        async with httpx.AsyncClient(timeout=_timeout_seconds(), headers=_api_headers()) as client:
             for jira_id in jira_ids:
                 normalized = _normalize_jira_id(jira_id)
                 log.debug("normalized jira id: %s", normalized)

@@ -14,7 +14,7 @@ COPY requirements.txt requirements-dev.txt ./
 FROM base AS release
 
 # Install runtime dependencies only
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout=120 -r requirements.txt
 
 # Copy the rest of the application code
 COPY . .
@@ -29,7 +29,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 FROM base AS dev
 
 # Install runtime + development dependencies
-RUN pip install --no-cache-dir -r requirements-dev.txt
+RUN pip install --no-cache-dir --timeout=120 -r requirements-dev.txt
 
 # Copy the rest of the application code
 COPY . .
