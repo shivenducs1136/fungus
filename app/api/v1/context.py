@@ -14,6 +14,7 @@ from app.models.response_models import (
 )
 from app.services.context_service import ContextService
 from app.core.database import get_db
+from app.core.auth import require_api_key
 from app.core.logging_config import get_logger
 
 log = get_logger("fungus.knowledge_server.api.context")
@@ -21,6 +22,7 @@ log = get_logger("fungus.knowledge_server.api.context")
 router = APIRouter(
     prefix="/api/v1/context",
     tags=["Context"],
+    dependencies=[Depends(require_api_key)],
     responses={404: {"description": "Entry not found"}, 500: {"description": "Storage error"}},
 )
 

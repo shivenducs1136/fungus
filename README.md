@@ -173,11 +173,18 @@ docker pull gsquare3/fungus:1.0.0
 Create a `.env` file with the following variables:
 
 ```env
-# Database Configuration
-DATABASE_URL=postgresql://postgres:password@db:5432/fungus
+# Database Configuration — required, no default
+DATABASE_URL=postgresql://postgres:your_password@db:5432/fungus
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password
 POSTGRES_DB=fungus
+
+# API key — all context API calls require X-API-Key: <value>
+# Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+FUNGUS_API_KEY=your_generated_key
+
+# CORS — comma-separated list of allowed browser origins
+ALLOWED_ORIGINS=https://your-frontend-domain.com
 
 # MCP Server
 KNOWLEDGE_SERVER_BASE_URL=http://your-server:8000
@@ -186,6 +193,8 @@ KNOWLEDGE_SERVER_TIMEOUT_SECONDS=15
 # Logging
 FUNGUS_LOG_LEVEL=INFO
 ```
+
+> Copy `.env.example` to `.env` and fill in the values. `DATABASE_URL` and `FUNGUS_API_KEY` are required — the server will not start without them.
 
 ### Running the Image
 
@@ -197,6 +206,8 @@ docker run -p 8000:8000 \
   -e POSTGRES_USER="postgres" \
   -e POSTGRES_PASSWORD="your_password" \
   -e POSTGRES_DB="fungus" \
+  -e FUNGUS_API_KEY="your_generated_key" \
+  -e ALLOWED_ORIGINS="https://your-frontend-domain.com" \
   -e KNOWLEDGE_SERVER_BASE_URL="http://your-server:8000" \
   gsquare3/fungus:latest
 ```
@@ -413,6 +424,7 @@ Add to Claude's MCP config file (for example `claude_desktop_config.json`):
          "env": {
             "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
             "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15",
+            "FUNGUS_API_KEY": "your_generated_key",
             "FUNGUS_LOG_LEVEL": "INFO"
          }
       }
@@ -433,7 +445,8 @@ Add to Cursor MCP config (same schema):
          "args": [],
          "env": {
             "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
-            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15"
+            "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15",
+            "FUNGUS_API_KEY": "your_generated_key"
          }
       }
    }
@@ -451,6 +464,7 @@ Add to Cursor MCP config (same schema):
          "env": {
             "KNOWLEDGE_SERVER_BASE_URL": "http://127.0.0.1:8000",
             "KNOWLEDGE_SERVER_TIMEOUT_SECONDS": "15",
+            "FUNGUS_API_KEY": "your_generated_key",
             "FUNGUS_LOG_LEVEL": "INFO"
          }
       }
@@ -474,7 +488,7 @@ Quick steps:
    - Command: `python`
    - Args: `-m app.mcp.server`
    - Working directory: `D:\Fungus\fungus`
-   - Environment: Set `KNOWLEDGE_SERVER_BASE_URL=http://127.0.0.1:8000`
+   - Environment: Set `KNOWLEDGE_SERVER_BASE_URL=http://127.0.0.1:8000` and `FUNGUS_API_KEY=your_generated_key`
 
 3. **Reload window** and open Copilot Chat to access:
    - `save_knowledge`
@@ -483,22 +497,27 @@ Quick steps:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `KNOWLEDGE_SERVER_BASE_URL` | `http://127.0.0.1:8000` | URL of the FastAPI knowledge server |
-| `KNOWLEDGE_SERVER_TIMEOUT_SECONDS` | `15` | HTTP timeout for knowledge server calls |
-| `FUNGUS_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
-| `FUNGUS_LOG_DIR` | `<repo_root>/logs/` | Directory where `knowledge_server.log`, `mcp_server.log`, and `extract_regex_from_commit.log` are written |
-| `DEMO_EMAIL_ENABLED` | `false` | Enable demo booking confirmation email automation |
-| `SMTP_HOST` | _none_ | SMTP host for outgoing emails |
-| `SMTP_PORT` | `587` | SMTP port |
-| `SMTP_USERNAME` | _none_ | SMTP auth username |
-| `SMTP_PASSWORD` | _none_ | SMTP auth password |
-| `SMTP_PASSWORD_ENCRYPTED` | _none_ | Encrypted SMTP password (preferred over plain text) |
-| `SMTP_CREDENTIALS_KEY` | _none_ | Fernet key used to decrypt `SMTP_PASSWORD_ENCRYPTED` |
-| `SMTP_CREDENTIALS_KEY_FILE` | `/run/secrets/smtp_credentials_key` | Path to file containing Fernet decryption key (preferred) |
-| `SMTP_SENDER_EMAIL` | `SMTP_USERNAME` | Sender email address |
-| `SMTP_USE_TLS` | `true` | Use STARTTLS for SMTP transport |
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | **Yes** | — | PostgreSQL connection string. Server refuses to start if unset |
+| `FUNGUS_API_KEY` | **Yes (prod)** | — | Secret key required in `X-API-Key` header on all context API calls. Generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `FUNGUS_AUTH_DISABLED` | No | `false` | Set to `true` to skip API key enforcement in local dev only. Never set in production |
+| `ALLOWED_ORIGINS` | No | `http://localhost:5173` | Comma-separated list of browser origins permitted by CORS |
+| `API_BASE_URL` | No | `http://api:8000` | Internal API URL used by the nginx proxy in the production frontend container |
+| `KNOWLEDGE_SERVER_BASE_URL` | No | `http://127.0.0.1:8000` | URL of the FastAPI knowledge server (used by MCP server) |
+| `KNOWLEDGE_SERVER_TIMEOUT_SECONDS` | No | `15` | HTTP timeout for knowledge server calls |
+| `FUNGUS_LOG_LEVEL` | No | `INFO` | Log verbosity: `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
+| `FUNGUS_LOG_DIR` | No | `<repo_root>/logs/` | Directory where log files are written |
+| `DEMO_EMAIL_ENABLED` | No | `false` | Enable demo booking confirmation email automation |
+| `SMTP_HOST` | No | — | SMTP host for outgoing emails |
+| `SMTP_PORT` | No | `587` | SMTP port |
+| `SMTP_USERNAME` | No | — | SMTP auth username |
+| `SMTP_PASSWORD` | No | — | SMTP auth password |
+| `SMTP_PASSWORD_ENCRYPTED` | No | — | Encrypted SMTP password (preferred over plain text) |
+| `SMTP_CREDENTIALS_KEY` | No | — | Fernet key used to decrypt `SMTP_PASSWORD_ENCRYPTED` |
+| `SMTP_CREDENTIALS_KEY_FILE` | No | `/run/secrets/smtp_credentials_key` | Path to file containing Fernet decryption key (preferred) |
+| `SMTP_SENDER_EMAIL` | No | `SMTP_USERNAME` | Sender email address |
+| `SMTP_USE_TLS` | No | `true` | Use STARTTLS for SMTP transport |
 
 Copy `.env.example` to `.env` and adjust as needed.
 
@@ -587,4 +606,6 @@ At runtime the app uses `SMTP_PASSWORD_ENCRYPTED` first; if absent, it falls bac
 For decryption key lookup, it reads `SMTP_CREDENTIALS_KEY_FILE` first and only falls back to `SMTP_CREDENTIALS_KEY` for backward compatibility.
 
 ## TODO
+- Add server-side pagination to `GET /context/` and `GET /context/jira/{id}` endpoints and wire frontend to use server params instead of client-side slicing.
 - Migrate database interactions from synchronous `psycopg2-binary` + SQLAlchemy to asynchronous using `asyncpg` to follow FastAPI best practices for async I/O.
+- Set up Alembic for schema migrations so production schema changes have a safe rollback path.
